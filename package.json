@@ -1,0 +1,28 @@
+{
+  "name": "lyla",
+  "version": "1.0.0",
+  "description": "A Slack bot for the Wee-Woo Dept",
+  "main": "app.js",
+  "dependencies": {
+    "@keyv/postgres": "^2.0.0",
+    "@slack/bolt": "^3.17.0",
+    "@slack/web-api": "^6.0.0",
+    "airtable": "^0.12.2",
+    "dotenv": "^16.0.0",
+    "keyv": "^5.4.0",
+    "node-schedule": "^2.1.1"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/v1peridae/lyla.git"
+  },
+  "author": "v1peridae",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/v1peridae/lyla/issues"
+  },
+  "homepage": "https://github.com/v1peridae/lyla#readme"
+}
