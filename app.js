@@ -441,11 +441,12 @@ app.view("conduct_report", async ({ ack, view, client }) => {
 
         await dmUser(client, cleanUserId, {
           text:
-            `Hi <@${cleanUserId}>! The Fire Dept has logged a coduct record:\n` +
-            `Reason : ${reason}\n` +
-            `Action taken by the FD : ${actionTaken}\n` +
+            `Hi <@${cleanUserId}>! The Fire Dept has logged a new conduct record on you:\n` +
+            `*Reason:* ${reason}\n` +
+            `*Action taken by the FD:* ${actionTaken}\n` +
             `We would recommend you have a look at the Code of Conduct at hackclub.com/conduct!\n` +
-            `If you are confused about this, please reach out to us via Shroud!`,
+            `If you are confused about this, please reach out to us via Shroud!\n` +
+            `Thanks,\nThe Fire Dept <3`,
         });
       } catch (dmError) {
         console.warn("Failed to DM:", userId, dmError);
