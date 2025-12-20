@@ -444,7 +444,7 @@ app.view("conduct_report", async ({ ack, view, client }) => {
             `Hi <@${cleanUserId}>! The Fire Dept has logged a new conduct record on you:\n` +
             `*Reason:* ${reason}\n` +
             `*Action taken by the FD:* ${actionTaken}\n` +
-            `We would recommend you have a look at the Code of Conduct at hackclub.com/conduct!\n` +
+            `We would recommend you have a look at the <https://hackclub.com/conduct|Code of Conduct>!\n` +
             `If you are confused about this, please reach out to us via Shroud!\n` +
             `Thanks,\nThe Fire Dept <3`,
         });
