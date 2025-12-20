@@ -26,6 +26,15 @@ const base = new Airtable({ apiKey: process.env.AIRTABLE_PAT }).base(
 );
 const threadTracker = new Map();
 
+async function dmUser(client, userId, { text, blocks }) {
+  const cleanUserId = (userId || "").replace(/[<@>]/g, "");
+  if (!cleanUserId) return;
+  const openResp = await client.conversations.open({ users: cleanUserId });
+  const dmChannel = openResp?.channel?.id;
+  if (!dmChannel) return;
+  await client.chat.postMessage({ channel: dmChannel, text, ...(blocks ? { blocks } : {}),});
+}
+
 app.event("reaction_added", async ({ event, client }) => {
   const hourglassEmojis = [
     "hourglass",
@@ -424,6 +433,23 @@ app.view("conduct_report", async ({ ack, view, client }) => {
           },
         },
       ]);
+
+      try {
+        const cleanUserId = (userId || "").replace(/[<@>]/g, "");
+        const reason = values.violation_deets.violation_deets_input.value || "";
+        const actionTaken = finalsolution || "";
+
+        await dmUser(client, cleanUserId, {
+          text:
+            `Hi <@${cleanUserId}>! The Fire Dept has logged a coduct record:\n` +
+            `Reason : ${reason}\n` +
+            `Action taken by the FD : ${actionTaken}\n` +
+            `We would recommend you have a look at the Code of Conduct at hackclub.com/conduct!\n` +
+            `If you are confused about this, please reach out to us via Shroud!`,
+        });
+      } catch (dmError) {
+        console.warn("Failed to DM:", userId, dmError);
+      }
     }
 
     const reportFields = [
