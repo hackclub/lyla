@@ -1,0 +1,55 @@
+display_information:
+  name: LYLA
+  description: The FD Record-Keep Hologram
+  background_color: "#192f47"
+  long_description: >-
+    LYrate Lifeform Approximation, better known by her acronym LYLA, is an
+    associate and the holographic companion of the Fire Department. LYLA helps
+    out with record-keeping of Fire Department reports and actions taken. To
+    learn more about how to use LYLA, check the Google Docs!
+features:
+  bot_user:
+    display_name: LYLA
+    always_online: false
+  slash_commands:
+    - command: /prevreports
+      url: "https://lyla-899ddf4dcd3c.herokuapp.com/slack/events"
+      description: Check A Users Previous Reports
+      usage_hint: "@userID slack | airtable"
+      should_escape: true
+oauth_config:
+  redirect_urls:
+    - "https://lyla-899ddf4dcd3c.herokuapp.com/slack/events"
+  scopes:
+    user:
+      - "chat:write"
+      - "search:read"
+      - "users:read"
+    bot:
+      - "channels:history"
+      - "channels:read"
+      - "chat:write"
+      - commands
+      - "groups:history"
+      - "groups:read"
+      - "groups:write"
+      - "im:history"
+      - "mpim:history"
+      - "reactions:read"
+      - "reactions:write"
+      - "users.profile:read"
+      - "users:read"
+      - "users:read.email"
+settings:
+  event_subscriptions:
+    request_url: "https://lyla-899ddf4dcd3c.herokuapp.com/slack/events"
+    bot_events:
+      - message.channels
+      - message.groups
+      - reaction_added
+  interactivity:
+    is_enabled: true
+    request_url: "https://lyla-899ddf4dcd3c.herokuapp.com/slack/events"
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false

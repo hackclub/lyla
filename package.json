@@ -8,21 +8,20 @@
     "@slack/bolt": "^3.17.0",
     "@slack/web-api": "^6.0.0",
     "airtable": "^0.12.2",
-    "dotenv": "^16.0.0",
     "keyv": "^5.4.0",
     "node-schedule": "^2.1.1"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "NODE_ENV=development node app.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/v1peridae/lyla.git"
+    "url": "git+https://github.com/hackclub/lyla.git"
   },
   "author": "v1peridae",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/v1peridae/lyla/issues"
+    "url": "https://github.com/hackclub/lyla/issues"
   },
-  "homepage": "https://github.com/v1peridae/lyla#readme"
+  "homepage": "https://github.com/hackclub/lyla#readme"
 }
