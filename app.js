@@ -2,7 +2,12 @@ const { App } = require("@slack/bolt");
 const { WebClient } = require("@slack/web-api");
 const Airtable = require("airtable");
 const schedule = require("node-schedule");
-process.loadEnvFile();
+
+try {
+  process.loadEnvFile();
+} catch (e) {
+  console.log("No .env file found, proceeding with existing environment variables");  
+}
 
 const isDev = process.env.NODE_ENV === "development";
 const devChannel = process.env.DEV_CHANNEL;
