@@ -2,15 +2,7 @@ const { App } = require("@slack/bolt");
 const { WebClient } = require("@slack/web-api");
 const Airtable = require("airtable");
 const schedule = require("node-schedule");
-const { Keyv } = require("keyv");
-const KeyvPostgres = require("@keyv/postgres").default;
 process.loadEnvFile();
-
-const keyv = new Keyv({
-  store: new KeyvPostgres({
-    connectionString: process.env.PG_CONNECTION_STRING,
-  }),
-});
 
 const isDev = process.env.NODE_ENV === "development";
 const devChannel = process.env.DEV_CHANNEL;

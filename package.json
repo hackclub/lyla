@@ -8,7 +8,6 @@
     "@slack/bolt": "^3.17.0",
     "@slack/web-api": "^6.0.0",
     "airtable": "^0.12.2",
-    "keyv": "^5.4.0",
     "node-schedule": "^2.1.1"
   },
   "scripts": {
