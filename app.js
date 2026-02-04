@@ -472,30 +472,36 @@ app.view("conduct_report", async ({ ack, view, client }) => {
       ],
     });
     if (banDate || finalsolution.toLowerCase().includes("perma")) {
-      const userMention = allUserIds
-        .map((id) => `<@${id.replace(/[<@>]/g, "")}>`)
-        .join(", ");
+      const solution = finalsolution.toLowerCase().replace(/[\s\-_]/g, '');
+      const excludeChannel = 
+        solution.includes("channelban") ||
+        solution.includes("channelshush");
+      
+      if (!excludeChannel) {
+        const userMention = allUserIds
+          .map((id) => `<@${id.replace(/[<@>]/g, "")}>`)
+          .join(", ");
 
-      let notifmsg;
-      if (finalsolution.toLowerCase().includes("perma")) {
-        notifmsg = `${userMention} has been permanently banned... be good kids ^^`;
-      } else {
-        const dateFormat = new Date(banDate).toLocaleDateString("en-GB", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
+        let notifmsg;
+        if (finalsolution.toLowerCase().includes("perma")) {
+          notifmsg = `${userMention} has been permanently banned... be good kids ^^`;
+        } else {
+          const dateFormat = new Date(banDate).toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          });
+          const action = finalsolution.toLowerCase().includes("shush")
+            ? "shushed"
+            : "banned";
+          notifmsg = `${userMention} has been ${action} until ${dateFormat}... be good kids ^^`;
+        }
+
+        await client.chat.postMessage({
+          channel: NOTIF_CHANNEL,
+          text: notifmsg,
         });
-
-        const action = finalsolution.toLowerCase().includes("shush")
-          ? "shushed"
-          : "banned";
-        notifmsg = `${userMention} has been ${action} until ${dateFormat}... be good kids ^^`;
       }
-
-      await client.chat.postMessage({
-        channel: NOTIF_CHANNEL,
-        text: notifmsg,
-      });
     }
   } catch (error) {
     console.error(error);
