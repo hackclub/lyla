@@ -766,8 +766,8 @@ async function checkPendingThreads(client) {
         threadData.last_prompt_time ||
         threadData.ban_reaction_time;
       const timeSinceLastTrigger = now - lastTrigger;
-      const fiveHours = 5 * 60 * 60 * 1000;
-      if (timeSinceLastTrigger >= fiveHours) {
+      const nineHours = 9 * 60 * 60 * 1000;
+      if (timeSinceLastTrigger >= nineHours) {
         try {
           const pendingMessage = await client.chat.postMessage({
             channel: threadData.channel,
