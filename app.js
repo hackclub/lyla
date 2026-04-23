@@ -523,14 +523,23 @@ app.command(
       const [userId, source] = command.text.trim().split(" ");
       if (!userId || !source) {
         return await respond({
-          text: "Use the format: `/prevreports @user slack|airtable`",
+          text: "Use the format: `/prevreports @user|email slack|airtable`",
           response_type: "ephemeral",
         });
       }
-      const cleanUserId = userId.startsWith("<@")
-        ? userId.slice(2, -1).split("|")[0]
-        : userId.replace(/[<@>]/g, "");
+      const isEmail = userId.includes("@") && !userId.startsWith("<@");
+      const cleanUserId = isEmail
+        ? userId.replace(/^<mailto:([^|]+)\|.*>$/, "$1")
+        : userId.startsWith("<@")
+          ? userId.slice(2, -1).split("|")[0]
+          : userId.replace(/[<@>]/g, "");
       if (source.toLowerCase() === "slack") {
+        if (isEmail) {
+          return await respond({
+            text: "Email lookup is only supported with `airtable`, not `slack`.",
+            response_type: "ephemeral",
+          });
+        }
         const msgSearch = await userClient.search.messages({
           query: `in:#hq-firehouse <@${cleanUserId}>`,
           count: 100,
@@ -596,9 +605,12 @@ app.command(
           unfurl_media: false,
         });
       } else if (source.toLowerCase() === "airtable") {
+        const filterFormula = isEmail
+          ? `{Email} = '${cleanUserId}'`
+          : `{User Being Dealt With} = '${cleanUserId}'`;
         const records = await base("LYLA Records")
           .select({
-            filterByFormula: `{User Being Dealt With} = '${cleanUserId}'`,
+            filterByFormula: filterFormula,
             sort: [{ field: "Time Of Report", direction: "desc" }],
           })
           .all();

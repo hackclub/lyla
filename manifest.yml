@@ -15,7 +15,7 @@ features:
     - command: /prevreports
       url: "https://lyla-899ddf4dcd3c.herokuapp.com/slack/events"
       description: Check A Users Previous Reports
-      usage_hint: "@userID slack | airtable"
+      usage_hint: "@userID|email slack | airtable"
       should_escape: true
 oauth_config:
   redirect_urls:
