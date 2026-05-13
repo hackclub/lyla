@@ -1,7 +1,7 @@
-const { NOTIF_CHANNEL } = require("../lib/config");
-const { userClient, base } = require("../lib/clients");
-const { threadTracker, makeThreadKey } = require("../lib/thread-tracker");
-const { requestRefresh } = require("../jobs/sticky-pending");
+import { NOTIF_CHANNEL } from "../lib/config.js";
+import { userClient, base } from "../lib/clients.js";
+import { threadTracker, makeThreadKey } from "../lib/thread-tracker.js";
+import { requestRefresh } from "../jobs/sticky-pending.js";
 
 function register(app) {
   app.view("conduct_report", async ({ ack, view, client }) => {
@@ -158,4 +158,4 @@ function register(app) {
   });
 }
 
-module.exports = register;
+export default register;

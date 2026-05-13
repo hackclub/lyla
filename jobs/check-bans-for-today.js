@@ -1,5 +1,5 @@
-const { ALLOWED_CHANNELS } = require("../lib/config");
-const { base } = require("../lib/clients");
+import { ALLOWED_CHANNELS } from "../lib/config.js";
+import { base } from "../lib/clients.js";
 
 async function checkBansForToday(client) {
   const today = new Date();
@@ -43,4 +43,4 @@ async function checkBansForToday(client) {
   }
 }
 
-module.exports = checkBansForToday;
+export default checkBansForToday;

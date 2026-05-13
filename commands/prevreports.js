@@ -1,5 +1,5 @@
-const { ALLOWED_CHANNELS } = require("../lib/config");
-const { userClient, base } = require("../lib/clients");
+import { ALLOWED_CHANNELS } from "../lib/config.js";
+import { userClient, base } from "../lib/clients.js";
 
 function register(app) {
   app.command(/^\/(.*dev-)?prevreports$/, async ({ command, ack, client, respond }) => {
@@ -170,4 +170,4 @@ function register(app) {
   });
 }
 
-module.exports = register;
+export default register;

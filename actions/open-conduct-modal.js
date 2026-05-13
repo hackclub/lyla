@@ -1,4 +1,4 @@
-const { buildConductModalBlocks } = require("../lib/blocks");
+import { buildConductModalBlocks } from "../lib/blocks.js";
 
 function register(app) {
   app.action("open_conduct_modal", async ({ ack, body, client }) => {
@@ -28,4 +28,4 @@ function register(app) {
   });
 }
 
-module.exports = register;
+export default register;

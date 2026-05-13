@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "A Slack bot for the Wee-Woo Dept",
   "main": "app.js",
+  "type": "module",
   "dependencies": {
     "@slack/bolt": "^4.7.2",
     "@slack/web-api": "^7.15.2",

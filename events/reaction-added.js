@@ -1,7 +1,7 @@
-const { ALLOWED_CHANNELS } = require("../lib/config");
-const { threadTracker, makeThreadKey, ensureTrackedThread } = require("../lib/thread-tracker");
-const { getConductPromptBlocks } = require("../lib/blocks");
-const { requestRefresh } = require("../jobs/sticky-pending");
+import { ALLOWED_CHANNELS } from "../lib/config.js";
+import { threadTracker, makeThreadKey, ensureTrackedThread } from "../lib/thread-tracker.js";
+import { getConductPromptBlocks } from "../lib/blocks.js";
+import { requestRefresh } from "../jobs/sticky-pending.js";
 
 const HOURGLASS_EMOJIS = ["hourglass", "hourglass_flowing_sand", "hourglass_not_done"];
 const TICK_REACTIONS = ["heavy_check_mark", "white_tick", "white_check_mark", "check"];
@@ -48,4 +48,4 @@ function register(app) {
   });
 }
 
-module.exports = register;
+export default register;

@@ -1,5 +1,5 @@
-const { threadTracker } = require("../lib/thread-tracker");
-const { requestRefresh } = require("./sticky-pending");
+import { threadTracker } from "../lib/thread-tracker.js";
+import { requestRefresh } from "./sticky-pending.js";
 
 const TICK_REACTIONS = ["heavy_check_mark", "white_tick", "white_check_mark", "check"];
 const X_REACTIONS = ["x"];
@@ -48,4 +48,4 @@ async function checkPendingThreads(client) {
   if (changed) requestRefresh(client);
 }
 
-module.exports = checkPendingThreads;
+export default checkPendingThreads;

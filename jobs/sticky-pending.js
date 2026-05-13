@@ -1,5 +1,5 @@
-const { ALLOWED_CHANNELS } = require("../lib/config");
-const { threadTracker } = require("../lib/thread-tracker");
+import { ALLOWED_CHANNELS } from "../lib/config.js";
+import { threadTracker } from "../lib/thread-tracker.js";
 
 const FIREHOUSE_CHANNEL = ALLOWED_CHANNELS[0];
 const WORKSPACE_DOMAIN = "hackclub.slack.com";
@@ -137,4 +137,4 @@ function register(app) {
   });
 }
 
-module.exports = { register, refresh, requestRefresh };
+export { register, refresh, requestRefresh };

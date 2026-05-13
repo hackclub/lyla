@@ -1,16 +1,16 @@
-const { App } = require("@slack/bolt");
-const schedule = require("node-schedule");
+import { App } from "@slack/bolt";
+import schedule from "node-schedule";
 
-const { isDev, PORT } = require("./lib/config");
+import { isDev, PORT } from "./lib/config.js";
 
-const registerReactionAdded = require("./events/reaction-added");
-const registerOpenConductModal = require("./actions/open-conduct-modal");
-const registerConductReportView = require("./views/conduct-report");
-const registerPrevReports = require("./commands/prevreports");
-const registerStickyPending = require("./jobs/sticky-pending").register;
+import registerReactionAdded from "./events/reaction-added.js";
+import registerOpenConductModal from "./actions/open-conduct-modal.js";
+import registerConductReportView from "./views/conduct-report.js";
+import registerPrevReports from "./commands/prevreports.js";
+import { register as registerStickyPending } from "./jobs/sticky-pending.js";
 
-const checkBansForToday = require("./jobs/check-bans-for-today");
-const checkPendingThreads = require("./jobs/check-pending-threads");
+import checkBansForToday from "./jobs/check-bans-for-today.js";
+import checkPendingThreads from "./jobs/check-pending-threads.js";
 
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
