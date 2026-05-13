@@ -4,14 +4,14 @@
   "description": "A Slack bot for the Wee-Woo Dept",
   "main": "app.js",
   "dependencies": {
-    "@keyv/postgres": "^2.0.0",
-    "@slack/bolt": "^3.17.0",
-    "@slack/web-api": "^6.0.0",
+    "@slack/bolt": "^4.7.2",
+    "@slack/web-api": "^7.15.2",
     "airtable": "^0.12.2",
     "node-schedule": "^2.1.1"
   },
   "scripts": {
-    "dev": "NODE_ENV=development node app.js"
+    "dev": "NODE_ENV=development node app.js",
+    "format": "prettier --write ."
   },
   "repository": {
     "type": "git",
@@ -22,5 +22,8 @@
   "bugs": {
     "url": "https://github.com/hackclub/lyla/issues"
   },
-  "homepage": "https://github.com/hackclub/lyla#readme"
+  "homepage": "https://github.com/hackclub/lyla#readme",
+  "devDependencies": {
+    "prettier": "^3.8.3"
+  }
 }

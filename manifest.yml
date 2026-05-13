@@ -13,13 +13,13 @@ features:
     always_online: false
   slash_commands:
     - command: /prevreports
-      url: "https://lyla-899ddf4dcd3c.herokuapp.com/slack/events"
+      url: https://lyla.hackclub.com/slack/events
       description: Check A Users Previous Reports
-      usage_hint: "@userID|email slack | airtable"
+      usage_hint: "@userID|email slack|airtable"
       should_escape: true
 oauth_config:
   redirect_urls:
-    - "https://lyla-899ddf4dcd3c.herokuapp.com/slack/events"
+    - "https://lyla.hackclub.com/slack/events"
   scopes:
     user:
       - "chat:write"
@@ -42,14 +42,14 @@ oauth_config:
       - "users:read.email"
 settings:
   event_subscriptions:
-    request_url: "https://lyla-899ddf4dcd3c.herokuapp.com/slack/events"
+    request_url: https://lyla.hackclub.com/slack/events
     bot_events:
       - message.channels
       - message.groups
       - reaction_added
   interactivity:
     is_enabled: true
-    request_url: "https://lyla-899ddf4dcd3c.herokuapp.com/slack/events"
+    request_url: https://lyla.hackclub.com/slack/events
   org_deploy_enabled: false
   socket_mode_enabled: false
   token_rotation_enabled: false
