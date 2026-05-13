@@ -76,11 +76,10 @@ function register(app) {
     }
 
     // Resolve/cancel reactions: clear tracking + remove :bangbang:
-    // QUIRK: this only fires for ALLOWED_CHANNELS[0], not all allowed channels.
     const isCancel = X_REACTIONS.includes(reaction);
     const isResolve = TICK_REACTIONS.includes(reaction);
 
-    if ((isCancel || isResolve) && channel === ALLOWED_CHANNELS[0]) {
+    if ((isCancel || isResolve) && isAllowedChannel) {
       let threadKey = makeThreadKey(channel, event.item.ts);
       if (!threadTracker.has(threadKey)) {
         const found = findTrackedThreadByPendingMessage(channel, event.item.ts);
@@ -93,12 +92,15 @@ function register(app) {
 
       const threadData = threadTracker.get(threadKey);
       threadTracker.delete(threadKey);
-      // QUIRK: removes :bangbang: even if it was never added.
-      await client.reactions.remove({
-        channel: threadData.channel,
-        timestamp: threadData.thread_ts,
-        name: "bangbang",
-      });
+      try {
+        await client.reactions.remove({
+          channel: threadData.channel,
+          timestamp: threadData.thread_ts,
+          name: "bangbang",
+        });
+      } catch (error) {
+        // Likely the :bangbang: reaction was never added; safe to ignore.
+      }
       return;
     }
   });
