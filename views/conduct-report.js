@@ -1,6 +1,7 @@
 const { NOTIF_CHANNEL } = require("../lib/config");
 const { userClient, base } = require("../lib/clients");
 const { threadTracker, makeThreadKey } = require("../lib/thread-tracker");
+const { requestRefresh } = require("../jobs/sticky-pending");
 
 function register(app) {
   app.view("conduct_report", async ({ ack, view, client }) => {
@@ -37,34 +38,11 @@ function register(app) {
       const resolvers = values.resolved_by.resolver_select.selected_users;
       const violation = values.violation_deets.violation_deets_input.value;
 
-      // Mark thread as resolved + remove :bangbang: if present.
+      // Mark thread as resolved so the sticky drops it.
       const threadKey = makeThreadKey(channel, thread_ts);
       if (threadTracker.has(threadKey)) {
-        const threadData = threadTracker.get(threadKey);
-        threadData.report_filed = true;
-
-        try {
-          const repliesResp = await client.conversations.replies({
-            channel: threadData.channel,
-            ts: threadData.thread_ts,
-            limit: 1,
-            inclusive: true,
-          });
-          const rootMsg = repliesResp.messages && repliesResp.messages[0];
-
-          if (rootMsg && rootMsg.reactions) {
-            const reactions = rootMsg.reactions.map((r) => r.name);
-            if (reactions.includes("bangbang")) {
-              await client.reactions.remove({
-                channel,
-                timestamp: threadData.thread_ts,
-                name: "bangbang",
-              });
-            }
-          }
-        } catch (error) {
-          console.error(error);
-        }
+        threadTracker.get(threadKey).report_filed = true;
+        requestRefresh(client);
       }
 
       // Look up display name + email for each reported user, then write

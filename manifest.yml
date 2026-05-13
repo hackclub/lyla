@@ -14,7 +14,7 @@ features:
   slash_commands:
     - command: /prevreports
       url: https://lyla.hackclub.com/slack/events
-      description: Check A Users Previous Reports
+      description: Check a user's previous reports
       usage_hint: "@userID|email slack|airtable"
       should_escape: true
 oauth_config:
@@ -35,6 +35,7 @@ oauth_config:
       - "groups:write"
       - "im:history"
       - "mpim:history"
+      - "pins:write"
       - "reactions:read"
       - "reactions:write"
       - "users.profile:read"

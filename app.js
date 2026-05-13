@@ -7,6 +7,7 @@ const registerReactionAdded = require("./events/reaction-added");
 const registerOpenConductModal = require("./actions/open-conduct-modal");
 const registerConductReportView = require("./views/conduct-report");
 const registerPrevReports = require("./commands/prevreports");
+const registerStickyPending = require("./jobs/sticky-pending").register;
 
 const checkBansForToday = require("./jobs/check-bans-for-today");
 const checkPendingThreads = require("./jobs/check-pending-threads");
@@ -23,6 +24,7 @@ registerReactionAdded(app);
 registerOpenConductModal(app);
 registerConductReportView(app);
 registerPrevReports(app);
+registerStickyPending(app);
 
 (async () => {
   await app.start();
