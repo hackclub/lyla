@@ -30,8 +30,45 @@ function fallbackText(timestampMs) {
   return days === 1 ? "1 day ago" : `${days} days ago`;
 }
 
-function buildBlocksFromThreads(threads) {
+function truncateToWordBoundary(text, maxLen = 100) {
+  const trimmed = text.trim();
+  if (trimmed.length <= maxLen) return trimmed;
+  const sub = trimmed.slice(0, maxLen);
+  const lastSpace = sub.lastIndexOf(" ");
+  return (lastSpace > 0 ? sub.slice(0, lastSpace) : sub).trim();
+}
+
+// in-memory snippet cache: "${channel}:${threadTs}" -> string
+const snippetCache = new Map();
+
+async function fetchSnippet(channel, threadTs) {
+  const key = `${channel}:${threadTs}`;
+  if (snippetCache.has(key)) return;
+  try {
+    const resp = await botClient.conversations.replies({
+      channel,
+      ts: threadTs,
+      limit: 1,
+      inclusive: true,
+    });
+    const text = resp.messages?.[0]?.text ?? "";
+    snippetCache.set(key, truncateToWordBoundary(text) || "View Thread");
+  } catch {
+    snippetCache.set(key, "View Thread");
+  }
+}
+
+async function buildBlocksFromThreads(threads) {
   if (threads.length === 0) return null;
+
+  await Promise.all(threads.map((t) => fetchSnippet(t.channel, t.threadTs)));
+
+  // prune cache entries for threads that no longer exist
+  const activeKeys = new Set(threads.map((t) => `${t.channel}:${t.threadTs}`));
+  for (const key of snippetCache.keys()) {
+    if (!activeKeys.has(key)) snippetCache.delete(key);
+  }
+
   return [
     {
       type: "rich_text",
@@ -51,7 +88,11 @@ function buildBlocksFromThreads(threads) {
           elements: threads.map((t) => ({
             type: "rich_text_section",
             elements: [
-              { type: "link", url: threadUrl(t.channel, t.threadTs), text: "View Thread" },
+              {
+                type: "link",
+                url: threadUrl(t.channel, t.threadTs),
+                text: snippetCache.get(`${t.channel}:${t.threadTs}`),
+              },
               { type: "text", text: " (" },
               {
                 type: "date",
@@ -121,7 +162,7 @@ async function doReposition() {
   await loadStickyTs();
 
   if (cachedBlocks === undefined) {
-    cachedBlocks = buildBlocksFromThreads(await getAllThreads());
+    cachedBlocks = await buildBlocksFromThreads(await getAllThreads());
   }
 
   if (!cachedBlocks) {
@@ -146,7 +187,7 @@ async function doReposition() {
 async function doUpdate() {
   await loadStickyTs();
 
-  cachedBlocks = buildBlocksFromThreads(await getAllThreads());
+  cachedBlocks = await buildBlocksFromThreads(await getAllThreads());
 
   if (!cachedBlocks) {
     stopRefreshInterval();
