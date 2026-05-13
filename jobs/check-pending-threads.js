@@ -1,5 +1,5 @@
 import { getAllThreads, removeThread } from "../lib/thread-tracker.js";
-import { requestRefresh } from "./sticky-pending.js";
+import { requestUpdate } from "./sticky-pending.js";
 
 const TICK_REACTIONS = ["heavy_check_mark", "white_tick", "white_check_mark", "check"];
 const X_REACTIONS = ["x"];
@@ -45,7 +45,7 @@ async function checkPendingThreads(client) {
     }
   }
 
-  if (changed) requestRefresh(client);
+  if (changed) requestUpdate(client);
 }
 
 export default checkPendingThreads;

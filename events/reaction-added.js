@@ -1,7 +1,7 @@
 import { ALLOWED_CHANNELS } from "../lib/config.js";
 import { addThread, getThread, removeThread } from "../lib/thread-tracker.js";
 import { getConductPromptBlocks } from "../lib/blocks.js";
-import { requestRefresh } from "../jobs/sticky-pending.js";
+import { requestUpdate } from "../jobs/sticky-pending.js";
 
 const HOURGLASS_EMOJIS = ["hourglass", "hourglass_flowing_sand", "hourglass_not_done"];
 const TICK_REACTIONS = ["heavy_check_mark", "white_tick", "white_check_mark", "check"];
@@ -16,7 +16,7 @@ function register(app) {
     // Hourglass reactions: just track the thread
     if (isAllowedChannel && HOURGLASS_EMOJIS.includes(reaction)) {
       await addThread(channel, event.item.ts, Date.now());
-      requestRefresh(client);
+      requestUpdate(client);
     }
 
     // Ban reaction: track + post conduct-report prompt
@@ -29,7 +29,7 @@ function register(app) {
         text: "Wanna file a conduct report?",
         blocks: getConductPromptBlocks(),
       });
-      requestRefresh(client);
+      requestUpdate(client);
       return;
     }
 
@@ -42,7 +42,7 @@ function register(app) {
       if (!thread) return;
 
       await removeThread(channel, event.item.ts);
-      requestRefresh(client);
+      requestUpdate(client);
       return;
     }
   });

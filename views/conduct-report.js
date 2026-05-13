@@ -1,7 +1,7 @@
 import { NOTIF_CHANNEL } from "../lib/config.js";
 import { userClient, base } from "../lib/clients.js";
 import { getThread, removeThread } from "../lib/thread-tracker.js";
-import { requestRefresh } from "../jobs/sticky-pending.js";
+import { requestUpdate } from "../jobs/sticky-pending.js";
 
 function register(app) {
   app.view("conduct_report", async ({ ack, view, client }) => {
@@ -41,7 +41,7 @@ function register(app) {
       // Mark thread as resolved so the sticky drops it.
       if (await getThread(channel, thread_ts)) {
         await removeThread(channel, thread_ts);
-        requestRefresh(client);
+        requestUpdate(client);
       }
 
       // Look up display name + email for each reported user, then write

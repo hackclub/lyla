@@ -6,47 +6,14 @@ import { eq } from "drizzle-orm";
 
 const FIREHOUSE_CHANNEL = ALLOWED_CHANNELS[0];
 const WORKSPACE_DOMAIN = "hackclub.slack.com";
+const COOLDOWN_MS = 3000;
 
 function threadUrl(channel, ts) {
   return `https://${WORKSPACE_DOMAIN}/archives/${channel}/p${ts.replace(".", "")}?thread_ts=${ts}`;
 }
 
-// Refresh fires immediately on the first request, then is rate-limited
-// to at most once per COOLDOWN_MS. A trailing refresh inside the cooldown
-// window catches any activity that happened during the wait.
-const COOLDOWN_MS = 3000;
-
-let pendingTimer = null;
-let lastRefreshTime = 0;
-let isRefreshing = false;
-
-async function getStickyTs() {
-  const rows = await db.select().from(appState).where(eq(appState.key, "stickyMessageTs"));
-  return rows[0]?.value ?? null;
-}
-
-async function setStickyTs(ts) {
-  await db
-    .insert(appState)
-    .values({ key: "stickyMessageTs", value: ts })
-    .onConflictDoUpdate({ target: appState.key, set: { value: ts } });
-}
-
-async function buildBlocks() {
-  const threads = await getAllThreads();
+function buildBlocksFromThreads(threads) {
   if (threads.length === 0) return null;
-
-  const listElements = threads.map((t) => ({
-    type: "rich_text_section",
-    elements: [
-      {
-        type: "link",
-        url: threadUrl(t.channel, t.threadTs),
-        text: "View Thread",
-      },
-    ],
-  }));
-
   return [
     {
       type: "rich_text",
@@ -63,95 +30,167 @@ async function buildBlocks() {
         {
           type: "rich_text_list",
           style: "ordered",
-          elements: listElements,
+          elements: threads.map((t) => ({
+            type: "rich_text_section",
+            elements: [
+              { type: "link", url: threadUrl(t.channel, t.threadTs), text: "View Thread" },
+            ],
+          })),
         },
       ],
     },
   ];
 }
 
-async function refresh(client) {
-  if (isRefreshing) return;
-  isRefreshing = true;
-  try {
-    const blocks = await buildBlocks();
-    let stickyMessageTs = await getStickyTs();
+// cachedBlocks is undefined until first load (null means no threads)
+let cachedBlocks = undefined;
+let stickyTs = undefined; // undefined = not yet loaded
 
-    // Tear down the old sticky if any.
-    if (stickyMessageTs) {
-      try {
-        await client.pins.remove({
-          channel: FIREHOUSE_CHANNEL,
-          timestamp: stickyMessageTs,
-        });
-      } catch {
-        // Pin may already be gone; ignore.
-      }
-      try {
-        await client.chat.delete({
-          channel: FIREHOUSE_CHANNEL,
-          ts: stickyMessageTs,
-        });
-      } catch {
-        // Message may already be gone; ignore.
-      }
-      await setStickyTs(null);
-      stickyMessageTs = null;
-    }
-
-    if (!blocks) return; // Nothing to display.
-
-    const post = await client.chat.postMessage({
-      channel: FIREHOUSE_CHANNEL,
-      text: "Threads awaiting action",
-      blocks,
-      unfurl_links: false,
-      unfurl_media: false,
-    });
-    await setStickyTs(post.ts);
-
-    try {
-      await client.pins.add({
-        channel: FIREHOUSE_CHANNEL,
-        timestamp: post.ts,
-      });
-    } catch (e) {
-      console.error("Could not pin sticky:", e.message);
-    }
-  } finally {
-    isRefreshing = false;
-  }
+async function loadStickyTs() {
+  if (stickyTs !== undefined) return;
+  const rows = await db.select().from(appState).where(eq(appState.key, "stickyMessageTs"));
+  stickyTs = rows[0]?.value ?? null;
 }
 
-function requestRefresh(client) {
-  const now = Date.now();
-  const sinceLast = now - lastRefreshTime;
+async function persistStickyTs(ts) {
+  stickyTs = ts; // update in-memory first so message handler sees it immediately
+  await db
+    .insert(appState)
+    .values({ key: "stickyMessageTs", value: ts })
+    .onConflictDoUpdate({ target: appState.key, set: { value: ts } });
+}
 
-  if (sinceLast >= COOLDOWN_MS) {
-    // Cooldown elapsed: fire immediately.
-    lastRefreshTime = now;
-    refresh(client).catch(console.error);
+async function postSticky(client) {
+  const post = await client.chat.postMessage({
+    channel: FIREHOUSE_CHANNEL,
+    text: "Unresolved threads",
+    blocks: cachedBlocks,
+    unfurl_links: false,
+    unfurl_media: false,
+  });
+  await Promise.all([
+    client.pins
+      .add({ channel: FIREHOUSE_CHANNEL, timestamp: post.ts })
+      .catch((e) => console.error("Could not pin sticky:", e.message)),
+    persistStickyTs(post.ts),
+  ]);
+}
+
+// new message in channel, delete old sticky and repost with cached blocks
+async function doReposition(client) {
+  await loadStickyTs();
+
+  if (cachedBlocks === undefined) {
+    cachedBlocks = buildBlocksFromThreads(await getAllThreads());
+  }
+
+  if (!cachedBlocks) {
+    // nothing to show, just clear any existing sticky
+    if (stickyTs) {
+      await client.chat.delete({ channel: FIREHOUSE_CHANNEL, ts: stickyTs }).catch(() => {});
+      await persistStickyTs(null);
+    }
     return;
   }
 
-  // Inside the cooldown window: schedule a single trailing refresh.
-  if (pendingTimer) return;
-  pendingTimer = setTimeout(() => {
-    pendingTimer = null;
-    lastRefreshTime = Date.now();
-    refresh(client).catch(console.error);
+  const oldTs = stickyTs;
+  await Promise.all([
+    oldTs
+      ? client.chat.delete({ channel: FIREHOUSE_CHANNEL, ts: oldTs }).catch(() => {})
+      : Promise.resolve(),
+    postSticky(client),
+  ]);
+}
+
+// thread tracking changed, rebuild blocks and update the sticky
+async function doUpdate(client) {
+  await loadStickyTs();
+
+  cachedBlocks = buildBlocksFromThreads(await getAllThreads());
+
+  if (!cachedBlocks) {
+    if (stickyTs) {
+      await client.chat.delete({ channel: FIREHOUSE_CHANNEL, ts: stickyTs }).catch(() => {});
+      await persistStickyTs(null);
+    }
+    return;
+  }
+
+  if (!stickyTs) {
+    await postSticky(client);
+    return;
+  }
+
+  await client.chat
+    .update({
+      channel: FIREHOUSE_CHANNEL,
+      ts: stickyTs,
+      text: "Unresolved threads",
+      blocks: cachedBlocks,
+    })
+    .catch(async (e) => {
+      // can't find it, maybe deleted manually? recreate and update ts
+      console.error("chat.update failed, recreating sticky:", e.message);
+      stickyTs = null;
+      await postSticky(client);
+    });
+}
+
+// serial operation chain, so doReposition and doUpdate never run at the same time
+let opChain = Promise.resolve();
+function enqueue(fn) {
+  opChain = opChain.then(fn).catch(console.error);
+}
+
+// separate rate limiters for each type
+// both allow a fresh one to go through immediately, then wait at least
+// COOLDOWN_MS before allowing the next one
+
+let pendingRepositionTimer = null;
+let lastRepositionTime = 0;
+
+let pendingUpdateTimer = null;
+let lastUpdateTime = 0;
+
+export function requestReposition(client) {
+  const now = Date.now();
+  const sinceLast = now - lastRepositionTime;
+  if (sinceLast >= COOLDOWN_MS) {
+    lastRepositionTime = now;
+    enqueue(() => doReposition(client));
+    return;
+  }
+  if (pendingRepositionTimer) return;
+  pendingRepositionTimer = setTimeout(() => {
+    pendingRepositionTimer = null;
+    lastRepositionTime = Date.now();
+    enqueue(() => doReposition(client));
   }, COOLDOWN_MS - sinceLast);
 }
 
-function register(app) {
+export function requestUpdate(client) {
+  const now = Date.now();
+  const sinceLast = now - lastUpdateTime;
+  if (sinceLast >= COOLDOWN_MS) {
+    lastUpdateTime = now;
+    enqueue(() => doUpdate(client));
+    return;
+  }
+  if (pendingUpdateTimer) return;
+  pendingUpdateTimer = setTimeout(() => {
+    pendingUpdateTimer = null;
+    lastUpdateTime = Date.now();
+    enqueue(() => doUpdate(client));
+  }, COOLDOWN_MS - sinceLast);
+}
+
+export function register(app) {
   app.event("message", async ({ event, client }) => {
     if (event.channel !== FIREHOUSE_CHANNEL) return;
     if (event.subtype && event.subtype !== "bot_message") return;
     if (event.thread_ts && event.thread_ts !== event.ts) return;
-    const stickyTs = await getStickyTs();
+    await loadStickyTs();
     if (event.ts === stickyTs) return;
-    requestRefresh(client);
+    requestReposition(client);
   });
 }
-
-export { register, refresh, requestRefresh };
