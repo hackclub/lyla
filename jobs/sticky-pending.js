@@ -31,7 +31,10 @@ function fallbackText(timestampMs) {
 }
 
 function truncateToWordBoundary(text, maxLen = 100) {
-  const trimmed = text.trim();
+  const trimmed = text
+    .split("\n")
+    .map((line) => line.trim())
+    .join(" ");
   if (trimmed.length <= maxLen) return trimmed;
   const sub = trimmed.slice(0, maxLen);
   const lastSpace = sub.lastIndexOf(" ");
