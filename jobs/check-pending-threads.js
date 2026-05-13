@@ -1,4 +1,4 @@
-import { threadTracker } from "../lib/thread-tracker.js";
+import { getAllThreads, removeThread } from "../lib/thread-tracker.js";
 import { requestRefresh } from "./sticky-pending.js";
 
 const TICK_REACTIONS = ["heavy_check_mark", "white_tick", "white_check_mark", "check"];
@@ -11,14 +11,14 @@ async function checkPendingThreads(client) {
   const now = Date.now();
   let changed = false;
 
-  for (const [threadKey, threadData] of threadTracker.entries()) {
-    if (threadData.report_filed) continue;
+  const threads = await getAllThreads();
 
+  for (const threadData of threads) {
     let rootMsg;
     try {
       const repliesResp = await client.conversations.replies({
         channel: threadData.channel,
-        ts: threadData.thread_ts,
+        ts: threadData.threadTs,
         limit: 1,
         inclusive: true,
       });
@@ -33,14 +33,14 @@ async function checkPendingThreads(client) {
     const hasX = X_REACTIONS.some((r) => reactions.includes(r));
 
     if (hasTick || hasX) {
-      threadTracker.delete(threadKey);
+      await removeThread(threadData.channel, threadData.threadTs);
       changed = true;
     }
   }
 
-  for (const [threadKey, threadData] of threadTracker.entries()) {
-    if (now - threadData.ban_reaction_time > SEVEN_DAYS) {
-      threadTracker.delete(threadKey);
+  for (const threadData of threads) {
+    if (now - threadData.banReactionTime > SEVEN_DAYS) {
+      await removeThread(threadData.channel, threadData.threadTs);
       changed = true;
     }
   }

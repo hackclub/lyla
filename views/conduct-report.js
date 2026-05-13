@@ -1,6 +1,6 @@
 import { NOTIF_CHANNEL } from "../lib/config.js";
 import { userClient, base } from "../lib/clients.js";
-import { threadTracker, makeThreadKey } from "../lib/thread-tracker.js";
+import { getThread, removeThread } from "../lib/thread-tracker.js";
 import { requestRefresh } from "../jobs/sticky-pending.js";
 
 function register(app) {
@@ -39,9 +39,8 @@ function register(app) {
       const violation = values.violation_deets.violation_deets_input.value;
 
       // Mark thread as resolved so the sticky drops it.
-      const threadKey = makeThreadKey(channel, thread_ts);
-      if (threadTracker.has(threadKey)) {
-        threadTracker.get(threadKey).report_filed = true;
+      if (await getThread(channel, thread_ts)) {
+        await removeThread(channel, thread_ts);
         requestRefresh(client);
       }
 

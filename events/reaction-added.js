@@ -1,5 +1,5 @@
 import { ALLOWED_CHANNELS } from "../lib/config.js";
-import { threadTracker, makeThreadKey, ensureTrackedThread } from "../lib/thread-tracker.js";
+import { addThread, getThread, removeThread } from "../lib/thread-tracker.js";
 import { getConductPromptBlocks } from "../lib/blocks.js";
 import { requestRefresh } from "../jobs/sticky-pending.js";
 
@@ -15,13 +15,13 @@ function register(app) {
 
     // Hourglass reactions: just track the thread
     if (isAllowedChannel && HOURGLASS_EMOJIS.includes(reaction)) {
-      ensureTrackedThread(channel, event.item.ts);
+      await addThread(channel, event.item.ts, Date.now());
       requestRefresh(client);
     }
 
     // Ban reaction: track + post conduct-report prompt
     if (isAllowedChannel && reaction === "ban") {
-      ensureTrackedThread(channel, event.item.ts);
+      await addThread(channel, event.item.ts, Date.now());
 
       await client.chat.postMessage({
         channel,
@@ -38,10 +38,10 @@ function register(app) {
     const isResolve = TICK_REACTIONS.includes(reaction);
 
     if ((isCancel || isResolve) && isAllowedChannel) {
-      const threadKey = makeThreadKey(channel, event.item.ts);
-      if (!threadTracker.has(threadKey)) return;
+      const thread = await getThread(channel, event.item.ts);
+      if (!thread) return;
 
-      threadTracker.delete(threadKey);
+      await removeThread(channel, event.item.ts);
       requestRefresh(client);
       return;
     }

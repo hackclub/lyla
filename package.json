@@ -8,7 +8,9 @@
     "@slack/bolt": "^4.7.2",
     "@slack/web-api": "^7.15.2",
     "airtable": "^0.12.2",
-    "node-schedule": "^2.1.1"
+    "drizzle-orm": "^0.45.2",
+    "node-schedule": "^2.1.1",
+    "postgres": "^3.4.9"
   },
   "scripts": {
     "dev": "NODE_ENV=development node app.js",
@@ -25,6 +27,7 @@
   },
   "homepage": "https://github.com/hackclub/lyla#readme",
   "devDependencies": {
+    "drizzle-kit": "^0.31.10",
     "prettier": "^3.8.3"
   }
 }

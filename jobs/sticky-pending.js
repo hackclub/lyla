@@ -1,5 +1,8 @@
 import { ALLOWED_CHANNELS } from "../lib/config.js";
-import { threadTracker } from "../lib/thread-tracker.js";
+import { getAllThreads } from "../lib/thread-tracker.js";
+import { db } from "../lib/db.js";
+import { appState } from "../db/schema.js";
+import { eq } from "drizzle-orm";
 
 const FIREHOUSE_CHANNEL = ALLOWED_CHANNELS[0];
 const WORKSPACE_DOMAIN = "hackclub.slack.com";
@@ -13,21 +16,32 @@ function threadUrl(channel, ts) {
 // window catches any activity that happened during the wait.
 const COOLDOWN_MS = 3000;
 
-let stickyMessageTs = null;
 let pendingTimer = null;
 let lastRefreshTime = 0;
 let isRefreshing = false;
 
-function buildBlocks() {
-  const open = [...threadTracker.values()].filter((t) => !t.report_filed);
-  if (open.length === 0) return null;
+async function getStickyTs() {
+  const rows = await db.select().from(appState).where(eq(appState.key, "stickyMessageTs"));
+  return rows[0]?.value ?? null;
+}
 
-  const listElements = open.map((t) => ({
+async function setStickyTs(ts) {
+  await db
+    .insert(appState)
+    .values({ key: "stickyMessageTs", value: ts })
+    .onConflictDoUpdate({ target: appState.key, set: { value: ts } });
+}
+
+async function buildBlocks() {
+  const threads = await getAllThreads();
+  if (threads.length === 0) return null;
+
+  const listElements = threads.map((t) => ({
     type: "rich_text_section",
     elements: [
       {
         type: "link",
-        url: threadUrl(t.channel, t.thread_ts),
+        url: threadUrl(t.channel, t.threadTs),
         text: "View Thread",
       },
     ],
@@ -60,7 +74,8 @@ async function refresh(client) {
   if (isRefreshing) return;
   isRefreshing = true;
   try {
-    const blocks = buildBlocks();
+    const blocks = await buildBlocks();
+    let stickyMessageTs = await getStickyTs();
 
     // Tear down the old sticky if any.
     if (stickyMessageTs) {
@@ -80,6 +95,7 @@ async function refresh(client) {
       } catch {
         // Message may already be gone; ignore.
       }
+      await setStickyTs(null);
       stickyMessageTs = null;
     }
 
@@ -92,12 +108,12 @@ async function refresh(client) {
       unfurl_links: false,
       unfurl_media: false,
     });
-    stickyMessageTs = post.ts;
+    await setStickyTs(post.ts);
 
     try {
       await client.pins.add({
         channel: FIREHOUSE_CHANNEL,
-        timestamp: stickyMessageTs,
+        timestamp: post.ts,
       });
     } catch (e) {
       console.error("Could not pin sticky:", e.message);
@@ -132,7 +148,8 @@ function register(app) {
     if (event.channel !== FIREHOUSE_CHANNEL) return;
     if (event.subtype && event.subtype !== "bot_message") return;
     if (event.thread_ts && event.thread_ts !== event.ts) return;
-    if (event.ts === stickyMessageTs) return;
+    const stickyTs = await getStickyTs();
+    if (event.ts === stickyTs) return;
     requestRefresh(client);
   });
 }
