@@ -7,7 +7,7 @@ import registerReactionAdded from "./events/reaction-added.js";
 import registerOpenConductModal from "./actions/open-conduct-modal.js";
 import registerConductReportView from "./views/conduct-report.js";
 import registerPrevReports from "./commands/prevreports.js";
-import { register as registerStickyPending } from "./jobs/sticky-pending.js";
+import { register as registerStickyPending, requestUpdate } from "./jobs/sticky-pending.js";
 
 import checkBansForToday from "./jobs/check-bans-for-today.js";
 import checkPendingThreads from "./jobs/check-pending-threads.js";
@@ -29,6 +29,7 @@ registerStickyPending(app);
 (async () => {
   await app.start();
   console.log("⚡️ Bolt app is running!");
+  requestUpdate();
 
   schedule.scheduleJob(
     {
