@@ -1,7 +1,7 @@
 import { ALLOWED_CHANNELS } from "../lib/config.js";
-import { base } from "../lib/clients.js";
+import { botClient, base } from "../lib/clients.js";
 
-async function checkBansForToday(client) {
+async function checkBansForToday() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const records = await base("LYLA Records")
@@ -27,7 +27,7 @@ async function checkBansForToday(client) {
       return `<@${userId}>'s ban/shush ends today (${banEndDate}), react ✅ if unbanned :)`;
     });
 
-    await client.chat.postMessage({
+    await botClient.chat.postMessage({
       channel: ALLOWED_CHANNELS[0],
       text: "Unban awaiting!!",
       blocks: [

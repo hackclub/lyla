@@ -37,11 +37,11 @@ registerStickyPending(app);
       tz: "America/New_York",
     },
     async () => {
-      await checkBansForToday(app.client);
+      await checkBansForToday();
     }
   );
 
   schedule.scheduleJob("*/30 * * * * *", async () => {
-    await checkPendingThreads(app.client);
+    await checkPendingThreads();
   });
 })();

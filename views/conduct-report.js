@@ -41,7 +41,7 @@ function register(app) {
       // Mark thread as resolved so the sticky drops it.
       if (await getThread(channel, thread_ts)) {
         await removeThread(channel, thread_ts);
-        requestUpdate(client);
+        requestUpdate();
       }
 
       // Look up display name + email for each reported user, then write

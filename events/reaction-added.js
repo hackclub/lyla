@@ -16,7 +16,7 @@ function register(app) {
     // Hourglass reactions: just track the thread
     if (isAllowedChannel && HOURGLASS_EMOJIS.includes(reaction)) {
       await addThread(channel, event.item.ts, Date.now());
-      requestUpdate(client);
+      requestUpdate();
     }
 
     // Ban reaction: track + post conduct-report prompt
@@ -29,7 +29,7 @@ function register(app) {
         text: "Wanna file a conduct report?",
         blocks: getConductPromptBlocks(),
       });
-      requestUpdate(client);
+      requestUpdate();
       return;
     }
 
@@ -42,7 +42,7 @@ function register(app) {
       if (!thread) return;
 
       await removeThread(channel, event.item.ts);
-      requestUpdate(client);
+      requestUpdate();
       return;
     }
   });

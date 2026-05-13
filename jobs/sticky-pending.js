@@ -1,5 +1,6 @@
 import { ALLOWED_CHANNELS } from "../lib/config.js";
 import { getAllThreads } from "../lib/thread-tracker.js";
+import { botClient } from "../lib/clients.js";
 import { db } from "../lib/db.js";
 import { appState } from "../db/schema.js";
 import { eq } from "drizzle-orm";
@@ -70,13 +71,12 @@ function buildBlocksFromThreads(threads) {
 // cachedBlocks is undefined until first load (null means no threads)
 let cachedBlocks = undefined;
 let stickyTs = undefined; // undefined = not yet loaded
-let storedClient = null;
 let refreshInterval = null;
 
 function startRefreshInterval() {
   if (refreshInterval) return;
   refreshInterval = setInterval(() => {
-    if (storedClient && cachedBlocks) enqueue(() => doUpdate(storedClient));
+    if (cachedBlocks) enqueue(doUpdate);
   }, 60_000);
 }
 
@@ -100,8 +100,8 @@ async function persistStickyTs(ts) {
     .onConflictDoUpdate({ target: appState.key, set: { value: ts } });
 }
 
-async function postSticky(client) {
-  const post = await client.chat.postMessage({
+async function postSticky() {
+  const post = await botClient.chat.postMessage({
     channel: FIREHOUSE_CHANNEL,
     text: "Unresolved threads",
     blocks: cachedBlocks,
@@ -109,7 +109,7 @@ async function postSticky(client) {
     unfurl_media: false,
   });
   await Promise.all([
-    client.pins
+    botClient.pins
       .add({ channel: FIREHOUSE_CHANNEL, timestamp: post.ts })
       .catch((e) => console.error("Could not pin sticky:", e.message)),
     persistStickyTs(post.ts),
@@ -117,7 +117,7 @@ async function postSticky(client) {
 }
 
 // new message in channel, delete old sticky and repost with cached blocks
-async function doReposition(client) {
+async function doReposition() {
   await loadStickyTs();
 
   if (cachedBlocks === undefined) {
@@ -127,7 +127,7 @@ async function doReposition(client) {
   if (!cachedBlocks) {
     // nothing to show, just clear any existing sticky
     if (stickyTs) {
-      await client.chat.delete({ channel: FIREHOUSE_CHANNEL, ts: stickyTs }).catch(() => {});
+      await botClient.chat.delete({ channel: FIREHOUSE_CHANNEL, ts: stickyTs }).catch(() => {});
       await persistStickyTs(null);
     }
     return;
@@ -136,14 +136,14 @@ async function doReposition(client) {
   const oldTs = stickyTs;
   await Promise.all([
     oldTs
-      ? client.chat.delete({ channel: FIREHOUSE_CHANNEL, ts: oldTs }).catch(() => {})
+      ? botClient.chat.delete({ channel: FIREHOUSE_CHANNEL, ts: oldTs }).catch(() => {})
       : Promise.resolve(),
-    postSticky(client),
+    postSticky(),
   ]);
 }
 
 // thread tracking changed, rebuild blocks and update the sticky
-async function doUpdate(client) {
+async function doUpdate() {
   await loadStickyTs();
 
   cachedBlocks = buildBlocksFromThreads(await getAllThreads());
@@ -151,7 +151,7 @@ async function doUpdate(client) {
   if (!cachedBlocks) {
     stopRefreshInterval();
     if (stickyTs) {
-      await client.chat.delete({ channel: FIREHOUSE_CHANNEL, ts: stickyTs }).catch(() => {});
+      await botClient.chat.delete({ channel: FIREHOUSE_CHANNEL, ts: stickyTs }).catch(() => {});
       await persistStickyTs(null);
     }
     return;
@@ -160,11 +160,11 @@ async function doUpdate(client) {
   startRefreshInterval();
 
   if (!stickyTs) {
-    await postSticky(client);
+    await postSticky();
     return;
   }
 
-  await client.chat
+  await botClient.chat
     .update({
       channel: FIREHOUSE_CHANNEL,
       ts: stickyTs,
@@ -175,7 +175,7 @@ async function doUpdate(client) {
       // can't find it, maybe deleted manually? recreate and update ts
       console.error("chat.update failed, recreating sticky:", e.message);
       stickyTs = null;
-      await postSticky(client);
+      await postSticky();
     });
 }
 
@@ -195,47 +195,45 @@ let lastRepositionTime = 0;
 let pendingUpdateTimer = null;
 let lastUpdateTime = 0;
 
-export function requestReposition(client) {
-  storedClient = client;
+export function requestReposition() {
   const now = Date.now();
   const sinceLast = now - lastRepositionTime;
   if (sinceLast >= COOLDOWN_MS) {
     lastRepositionTime = now;
-    enqueue(() => doReposition(client));
+    enqueue(doReposition);
     return;
   }
   if (pendingRepositionTimer) return;
   pendingRepositionTimer = setTimeout(() => {
     pendingRepositionTimer = null;
     lastRepositionTime = Date.now();
-    enqueue(() => doReposition(client));
+    enqueue(doReposition);
   }, COOLDOWN_MS - sinceLast);
 }
 
-export function requestUpdate(client) {
-  storedClient = client;
+export function requestUpdate() {
   const now = Date.now();
   const sinceLast = now - lastUpdateTime;
   if (sinceLast >= COOLDOWN_MS) {
     lastUpdateTime = now;
-    enqueue(() => doUpdate(client));
+    enqueue(doUpdate);
     return;
   }
   if (pendingUpdateTimer) return;
   pendingUpdateTimer = setTimeout(() => {
     pendingUpdateTimer = null;
     lastUpdateTime = Date.now();
-    enqueue(() => doUpdate(client));
+    enqueue(doUpdate);
   }, COOLDOWN_MS - sinceLast);
 }
 
 export function register(app) {
-  app.event("message", async ({ event, client }) => {
+  app.event("message", async ({ event }) => {
     if (event.channel !== FIREHOUSE_CHANNEL) return;
     if (event.subtype && event.subtype !== "bot_message") return;
     if (event.thread_ts && event.thread_ts !== event.ts) return;
     await loadStickyTs();
     if (event.ts === stickyTs) return;
-    requestReposition(client);
+    requestReposition();
   });
 }

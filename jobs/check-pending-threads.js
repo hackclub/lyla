@@ -1,4 +1,5 @@
 import { getAllThreads, removeThread } from "../lib/thread-tracker.js";
+import { botClient } from "../lib/clients.js";
 import { requestUpdate } from "./sticky-pending.js";
 
 const TICK_REACTIONS = ["heavy_check_mark", "white_tick", "white_check_mark", "check"];
@@ -7,7 +8,7 @@ const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
 
 // Walks the tracker, prunes resolved/expired entries, then asks the sticky
 // to refresh if anything changed.
-async function checkPendingThreads(client) {
+async function checkPendingThreads() {
   const now = Date.now();
   let changed = false;
 
@@ -16,7 +17,7 @@ async function checkPendingThreads(client) {
   for (const threadData of threads) {
     let rootMsg;
     try {
-      const repliesResp = await client.conversations.replies({
+      const repliesResp = await botClient.conversations.replies({
         channel: threadData.channel,
         ts: threadData.threadTs,
         limit: 1,
@@ -45,7 +46,7 @@ async function checkPendingThreads(client) {
     }
   }
 
-  if (changed) requestUpdate(client);
+  if (changed) requestUpdate();
 }
 
 export default checkPendingThreads;
