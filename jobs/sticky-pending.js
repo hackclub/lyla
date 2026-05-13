@@ -12,6 +12,23 @@ function threadUrl(channel, ts) {
   return `https://${WORKSPACE_DOMAIN}/archives/${channel}/p${ts.replace(".", "")}?thread_ts=${ts}`;
 }
 
+function fallbackText(timestampMs) {
+  const diffMs = Date.now() - timestampMs;
+  if (diffMs < 0 || diffMs > 30 * 24 * 60 * 60 * 1000) {
+    return new Date(timestampMs).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 60) return mins <= 1 ? "1 minute ago" : `${mins} minutes ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return hours === 1 ? "1 hour ago" : `${hours} hours ago`;
+  const days = Math.floor(hours / 24);
+  return days === 1 ? "1 day ago" : `${days} days ago`;
+}
+
 function buildBlocksFromThreads(threads) {
   if (threads.length === 0) return null;
   return [
@@ -34,6 +51,14 @@ function buildBlocksFromThreads(threads) {
             type: "rich_text_section",
             elements: [
               { type: "link", url: threadUrl(t.channel, t.threadTs), text: "View Thread" },
+              { type: "text", text: " (" },
+              {
+                type: "date",
+                timestamp: Math.floor(t.banReactionTime / 1000),
+                format: "{ago}",
+                fallback: fallbackText(t.banReactionTime),
+              },
+              { type: "text", text: ")" },
             ],
           })),
         },
@@ -45,6 +70,21 @@ function buildBlocksFromThreads(threads) {
 // cachedBlocks is undefined until first load (null means no threads)
 let cachedBlocks = undefined;
 let stickyTs = undefined; // undefined = not yet loaded
+let storedClient = null;
+let refreshInterval = null;
+
+function startRefreshInterval() {
+  if (refreshInterval) return;
+  refreshInterval = setInterval(() => {
+    if (storedClient && cachedBlocks) enqueue(() => doUpdate(storedClient));
+  }, 60_000);
+}
+
+function stopRefreshInterval() {
+  if (!refreshInterval) return;
+  clearInterval(refreshInterval);
+  refreshInterval = null;
+}
 
 async function loadStickyTs() {
   if (stickyTs !== undefined) return;
@@ -109,12 +149,15 @@ async function doUpdate(client) {
   cachedBlocks = buildBlocksFromThreads(await getAllThreads());
 
   if (!cachedBlocks) {
+    stopRefreshInterval();
     if (stickyTs) {
       await client.chat.delete({ channel: FIREHOUSE_CHANNEL, ts: stickyTs }).catch(() => {});
       await persistStickyTs(null);
     }
     return;
   }
+
+  startRefreshInterval();
 
   if (!stickyTs) {
     await postSticky(client);
@@ -153,6 +196,7 @@ let pendingUpdateTimer = null;
 let lastUpdateTime = 0;
 
 export function requestReposition(client) {
+  storedClient = client;
   const now = Date.now();
   const sinceLast = now - lastRepositionTime;
   if (sinceLast >= COOLDOWN_MS) {
@@ -169,6 +213,7 @@ export function requestReposition(client) {
 }
 
 export function requestUpdate(client) {
+  storedClient = client;
   const now = Date.now();
   const sinceLast = now - lastUpdateTime;
   if (sinceLast >= COOLDOWN_MS) {
