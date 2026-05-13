@@ -30,6 +30,42 @@ function fallbackText(timestampMs) {
   return days === 1 ? "1 day ago" : `${days} days ago`;
 }
 
+async function resolveMentions(text) {
+  const userIds = [...new Set([...text.matchAll(/<@([A-Z0-9]+)(?:\|[^>]*)?>/g)].map((m) => m[1]))];
+  const channelIds = [...new Set([...text.matchAll(/<#([A-Z0-9]+)(?:\|[^>]*)?>/g)].map((m) => m[1]))];
+
+  const [userEntries, channelEntries] = await Promise.all([
+    Promise.all(
+      userIds.map(async (id) => {
+        try {
+          const resp = await botClient.users.info({ user: id });
+          const name = resp.user?.profile?.display_name || resp.user?.profile?.real_name;
+          return [id, name ? `@${name}` : null];
+        } catch {
+          return [id, null];
+        }
+      })
+    ),
+    Promise.all(
+      channelIds.map(async (id) => {
+        try {
+          const resp = await botClient.conversations.info({ channel: id });
+          return [id, resp.channel?.name ? `#${resp.channel.name}` : null];
+        } catch {
+          return [id, null];
+        }
+      })
+    ),
+  ]);
+
+  const userMap = new Map(userEntries.filter(([, v]) => v));
+  const channelMap = new Map(channelEntries.filter(([, v]) => v));
+
+  return text
+    .replace(/<@([A-Z0-9]+)(?:\|[^>]*)?>/g, (match, id) => userMap.get(id) ?? match)
+    .replace(/<#([A-Z0-9]+)(?:\|[^>]*)?>/g, (match, id) => channelMap.get(id) ?? match);
+}
+
 function truncateToWordBoundary(text, maxLen = 100) {
   const trimmed = text
     .split("\n")
@@ -54,7 +90,8 @@ async function fetchSnippet(channel, threadTs) {
       limit: 1,
       inclusive: true,
     });
-    const text = resp.messages?.[0]?.text ?? "";
+    const raw = resp.messages?.[0]?.text ?? "";
+    const text = await resolveMentions(raw);
     snippetCache.set(key, truncateToWordBoundary(text) || "View Thread");
   } catch {
     snippetCache.set(key, "View Thread");
