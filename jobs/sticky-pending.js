@@ -35,7 +35,7 @@ function truncateToWordBoundary(text, maxLen = 100) {
   if (trimmed.length <= maxLen) return trimmed;
   const sub = trimmed.slice(0, maxLen);
   const lastSpace = sub.lastIndexOf(" ");
-  return (lastSpace > 0 ? sub.slice(0, lastSpace) : sub).trim();
+  return (lastSpace > 0 ? sub.slice(0, lastSpace) : sub).trim() + "...";
 }
 
 // in-memory snippet cache: "${channel}:${threadTs}" -> string
