@@ -101,10 +101,12 @@ async function fetchSnippet(channel, threadTs) {
 async function buildBlocksFromThreads(threads) {
   if (threads.length === 0) return null;
 
-  await Promise.all(threads.map((t) => fetchSnippet(t.channel, t.threadTs)));
+  const sorted = [...threads].sort((a, b) => a.banReactionTime - b.banReactionTime);
+
+  await Promise.all(sorted.map((t) => fetchSnippet(t.channel, t.threadTs)));
 
   // prune cache entries for threads that no longer exist
-  const activeKeys = new Set(threads.map((t) => `${t.channel}:${t.threadTs}`));
+  const activeKeys = new Set(sorted.map((t) => `${t.channel}:${t.threadTs}`));
   for (const key of snippetCache.keys()) {
     if (!activeKeys.has(key)) snippetCache.delete(key);
   }
@@ -125,7 +127,7 @@ async function buildBlocksFromThreads(threads) {
         {
           type: "rich_text_list",
           style: "ordered",
-          elements: threads.map((t) => ({
+          elements: sorted.map((t) => ({
             type: "rich_text_section",
             elements: [
               {
