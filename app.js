@@ -2,6 +2,7 @@ import { App } from "@slack/bolt";
 import schedule from "node-schedule";
 
 import { isDev, PORT } from "./lib/config.js";
+import { runMigrations } from "./lib/db.js";
 
 import registerReactionAdded from "./events/reaction-added.js";
 import registerOpenConductModal from "./actions/open-conduct-modal.js";
@@ -27,6 +28,7 @@ registerPrevReports(app);
 registerStickyPending(app);
 
 (async () => {
+  await runMigrations();
   await app.start();
   console.log("⚡️ Bolt app is running!");
   requestUpdate();
