@@ -313,8 +313,8 @@ export function requestUpdate() {
 export function register(app) {
   app.event("message", async ({ event }) => {
     if (event.channel !== FIREHOUSE_CHANNEL) return;
-    if (event.subtype && event.subtype !== "bot_message") return;
-    if (event.thread_ts && event.thread_ts !== event.ts) return;
+    if (event.subtype && event.subtype !== "bot_message" && event.subtype !== "thread_broadcast") return;
+    if (event.thread_ts && event.thread_ts !== event.ts && event.subtype !== "thread_broadcast") return;
     await loadStickyTs();
     if (event.ts === stickyTs) return;
     requestReposition();
