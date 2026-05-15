@@ -4,7 +4,7 @@ import { requestUpdate } from "./sticky-pending.js";
 
 const TICK_REACTIONS = ["heavy_check_mark", "white_tick", "white_check_mark", "check"];
 const X_REACTIONS = ["x"];
-const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+const EXPIRY_TIME = 10 * 24 * 60 * 60 * 1000;
 
 // Walks the tracker, prunes resolved/expired entries, then asks the sticky
 // to refresh if anything changed.
@@ -40,7 +40,7 @@ async function checkPendingThreads() {
   }
 
   for (const threadData of threads) {
-    if (now - threadData.banReactionTime > SEVEN_DAYS) {
+    if (now - threadData.banReactionTime > EXPIRY_TIME) {
       await removeThread(threadData.channel, threadData.threadTs);
       changed = true;
     }
