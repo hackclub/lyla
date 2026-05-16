@@ -129,9 +129,17 @@ async function buildBlocksFromCases(openCases) {
         type: "overflow",
         action_id: "thread_action",
         options: [
+          ...(c.assignees.length === 0
+            ? [
+                {
+                  text: { type: "plain_text", text: "Claim", emoji: false },
+                  value: `claim:${c.caseNumber}`,
+                },
+              ]
+            : []),
           {
-            text: { type: "plain_text", text: "Claim", emoji: false },
-            value: `claim:${c.caseNumber}`,
+            text: { type: "plain_text", text: "Edit Assignees", emoji: false },
+            value: `edit_assignees:${c.caseNumber}`,
           },
         ],
       },

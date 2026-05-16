@@ -15,7 +15,7 @@ features:
     - command: /prevreports
       url: https://lyla.hackclub.com/slack/events
       description: Check a user's previous reports
-      usage_hint: "@userID|email slack|airtable"
+      usage_hint: "[@userID | email] [slack | airtable]"
       should_escape: true
 oauth_config:
   redirect_urls:
@@ -48,6 +48,7 @@ settings:
       - message.channels
       - message.groups
       - reaction_added
+      - user_change
   interactivity:
     is_enabled: true
     request_url: https://lyla.hackclub.com/slack/events

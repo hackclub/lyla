@@ -8,7 +8,9 @@ import registerReactionAdded from "./events/reaction-added.js";
 import registerOpenConductModal from "./actions/open-conduct-modal.js";
 import registerClaimCase from "./actions/claim-case.js";
 import registerConductReportView from "./views/conduct-report.js";
+import registerEditAssigneesView from "./views/edit-assignees.js";
 import registerPrevReports from "./commands/prevreports.js";
+import registerAssignees from "./commands/assignees.js";
 import {
   register as registerStickyPending,
   requestUpdate,
@@ -30,7 +32,9 @@ registerReactionAdded(app);
 registerOpenConductModal(app);
 registerClaimCase(app);
 registerConductReportView(app);
+registerEditAssigneesView(app);
 registerPrevReports(app);
+registerAssignees(app);
 registerStickyPending(app);
 
 (async () => {
