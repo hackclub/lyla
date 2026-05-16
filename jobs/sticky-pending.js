@@ -1,81 +1,21 @@
 import { ALLOWED_CHANNELS } from "../lib/config.js";
-import { getAllThreads } from "../lib/thread-tracker.js";
+import { getOpenCases } from "../lib/case-tracker.js";
 import { botClient } from "../lib/clients.js";
 import { db } from "../lib/db.js";
 import { appState } from "../db/schema.js";
 import { eq } from "drizzle-orm";
+import {
+  threadUrl,
+  timeAgo,
+  truncateToWordBoundary,
+  escapeMrkdwn,
+  pingSafe,
+  resolveMentions,
+} from "../lib/slack-utils.js";
 
 const FIREHOUSE_CHANNEL = ALLOWED_CHANNELS[0];
-const WORKSPACE_DOMAIN = "hackclub.slack.com";
 const COOLDOWN_MS = 3000;
-
-function threadUrl(channel, ts) {
-  return `https://${WORKSPACE_DOMAIN}/archives/${channel}/p${ts.replace(".", "")}?thread_ts=${ts}`;
-}
-
-function fallbackText(timestampMs) {
-  const diffMs = Date.now() - timestampMs;
-  if (diffMs < 0 || diffMs > 30 * 24 * 60 * 60 * 1000) {
-    return new Date(timestampMs).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  }
-  const mins = Math.floor(diffMs / 60_000);
-  if (mins < 60) return mins <= 1 ? "1 minute ago" : `${mins} minutes ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return hours === 1 ? "1 hour ago" : `${hours} hours ago`;
-  const days = Math.floor(hours / 24);
-  return days === 1 ? "1 day ago" : `${days} days ago`;
-}
-
-async function resolveMentions(text) {
-  const userIds = [...new Set([...text.matchAll(/<@([A-Z0-9]+)(?:\|[^>]*)?>/g)].map((m) => m[1]))];
-  const channelIds = [...new Set([...text.matchAll(/<#([A-Z0-9]+)(?:\|[^>]*)?>/g)].map((m) => m[1]))];
-
-  const [userEntries, channelEntries] = await Promise.all([
-    Promise.all(
-      userIds.map(async (id) => {
-        try {
-          const resp = await botClient.users.info({ user: id });
-          const name = resp.user?.profile?.display_name || resp.user?.profile?.real_name;
-          return [id, name ? `@${name}` : null];
-        } catch {
-          return [id, null];
-        }
-      })
-    ),
-    Promise.all(
-      channelIds.map(async (id) => {
-        try {
-          const resp = await botClient.conversations.info({ channel: id });
-          return [id, resp.channel?.name ? `#${resp.channel.name}` : null];
-        } catch {
-          return [id, null];
-        }
-      })
-    ),
-  ]);
-
-  const userMap = new Map(userEntries.filter(([, v]) => v));
-  const channelMap = new Map(channelEntries.filter(([, v]) => v));
-
-  return text
-    .replace(/<@([A-Z0-9]+)(?:\|[^>]*)?>/g, (match, id) => userMap.get(id) ?? match)
-    .replace(/<#([A-Z0-9]+)(?:\|[^>]*)?>/g, (match, id) => channelMap.get(id) ?? match);
-}
-
-function truncateToWordBoundary(text, maxLen = 100) {
-  const trimmed = text
-    .split("\n")
-    .map((line) => line.trim())
-    .join(" ");
-  if (trimmed.length <= maxLen) return trimmed;
-  const sub = trimmed.slice(0, maxLen);
-  const lastSpace = sub.lastIndexOf(" ");
-  return (lastSpace > 0 ? sub.slice(0, lastSpace) : sub).trim() + "...";
-}
+const MAX_CASE_BLOCKS = 47; // leaves room for header + "N more" tail within Slack's 50-block limit
 
 // in-memory snippet cache: "${channel}:${threadTs}" -> string
 const snippetCache = new Map();
@@ -98,76 +38,131 @@ async function fetchSnippet(channel, threadTs) {
   }
 }
 
-async function buildBlocksFromThreads(threads) {
-  if (threads.length === 0) return null;
+// display name cache: userId -> string
+const displayNameCache = new Map();
 
-  const sorted = [...threads].sort((a, b) => a.banReactionTime - b.banReactionTime);
+async function fetchDisplayName(userId) {
+  if (displayNameCache.has(userId)) return displayNameCache.get(userId);
+  try {
+    const resp = await botClient.users.info({ user: userId });
+    const name = resp.user?.profile?.display_name || resp.user?.profile?.real_name || userId;
+    displayNameCache.set(userId, name);
+    return name;
+  } catch {
+    displayNameCache.set(userId, userId);
+    return userId;
+  }
+}
 
-  await Promise.all(sorted.map((t) => fetchSnippet(t.channel, t.threadTs)));
+const EMPTY_BLOCKS = [
+  {
+    type: "rich_text",
+    elements: [
+      {
+        type: "rich_text_section",
+        elements: [
+          { type: "emoji", name: "tada" },
+          { type: "text", text: " No unresolved threads!", style: { bold: true } },
+        ],
+      },
+    ],
+  },
+];
 
-  // prune cache entries for threads that no longer exist
-  const activeKeys = new Set(sorted.map((t) => `${t.channel}:${t.threadTs}`));
+async function buildBlocksFromCases(openCases) {
+  if (openCases.length === 0) return EMPTY_BLOCKS;
+
+  const sorted = [...openCases].sort((a, b) => a.createdAt - b.createdAt);
+
+  // Fetch snippets for each primary thread
+  await Promise.all(
+    sorted.map((c) => {
+      const primary = c.threads.find((t) => t.isPrimary) ?? c.threads[0];
+      if (primary) return fetchSnippet(primary.channel, primary.threadTs);
+    })
+  );
+
+  // Prune cache entries for cases that are no longer open
+  const activeKeys = new Set(
+    sorted.flatMap((c) => c.threads.map((t) => `${t.channel}:${t.threadTs}`))
+  );
   for (const key of snippetCache.keys()) {
     if (!activeKeys.has(key)) snippetCache.delete(key);
   }
 
-  return [
+  const displayed = sorted.slice(0, MAX_CASE_BLOCKS);
+  const overflow = sorted.length - displayed.length;
+
+  // Resolve display names for all assignees
+  const allAssigneeIds = [...new Set(displayed.flatMap((c) => c.assignees.map((a) => a.userId)))];
+  await Promise.all(allAssigneeIds.map(fetchDisplayName));
+
+  const caseBlocks = displayed.map((c, i) => {
+    const primary = c.threads.find((t) => t.isPrimary) ?? c.threads[0];
+    const snippet = primary
+      ? (snippetCache.get(`${primary.channel}:${primary.threadTs}`) ?? "View Thread")
+      : "View Thread";
+    const ago = timeAgo(c.createdAt);
+
+    let status;
+    if (c.assignees.length === 0) {
+      status = `unclaimed, ${ago}`;
+    } else {
+      const names = c.assignees
+        .map((a) => pingSafe(displayNameCache.get(a.userId) ?? a.userId))
+        .join(", ");
+      status = `assigned to ${names}, ${ago}`;
+    }
+
+    const linkText = primary
+      ? `<${threadUrl(primary.channel, primary.threadTs)}|${escapeMrkdwn(snippet)}>`
+      : escapeMrkdwn(snippet);
+
+    return {
+      type: "section",
+      block_id: `case_${i}`,
+      text: {
+        type: "mrkdwn",
+        text: `*${i + 1}.* #\u200c${c.caseNumber} ${linkText} (${status})`,
+      },
+      accessory: {
+        type: "overflow",
+        action_id: "thread_action",
+        options: [
+          {
+            text: { type: "plain_text", text: "Claim", emoji: false },
+            value: `claim:${c.caseNumber}`,
+          },
+        ],
+      },
+    };
+  });
+
+  const blocks = [
     {
-      type: "rich_text",
-      elements: [
-        {
-          type: "rich_text_section",
-          elements: [
-            { type: "emoji", name: "rotating_light" },
-            { type: "text", text: " " },
-            { type: "text", text: "Unresolved threads:", style: { bold: true } },
-            { type: "text", text: "\n" },
-          ],
-        },
-        {
-          type: "rich_text_list",
-          style: "ordered",
-          elements: sorted.map((t) => ({
-            type: "rich_text_section",
-            elements: [
-              {
-                type: "link",
-                url: threadUrl(t.channel, t.threadTs),
-                text: snippetCache.get(`${t.channel}:${t.threadTs}`),
-              },
-              { type: "text", text: " (" },
-              {
-                type: "date",
-                timestamp: Math.floor(t.banReactionTime / 1000),
-                format: "{ago}",
-                fallback: fallbackText(t.banReactionTime),
-              },
-              { type: "text", text: ")" },
-            ],
-          })),
-        },
-      ],
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: ":rotating_light: *Unresolved threads:*",
+      },
     },
+    ...caseBlocks,
   ];
+
+  if (overflow > 0) {
+    blocks.push({
+      type: "section",
+      text: { type: "mrkdwn", text: `_...and ${overflow} more_` },
+    });
+  }
+
+  return blocks;
 }
 
-// cachedBlocks is undefined until first load (null means no threads)
+// cachedBlocks is undefined until first load
 let cachedBlocks = undefined;
 let stickyTs = undefined; // undefined = not yet loaded
 let refreshInterval = null;
-
-function startRefreshInterval() {
-  if (refreshInterval) return;
-  refreshInterval = setInterval(() => {
-    if (cachedBlocks) enqueue(doUpdate);
-  }, 60_000);
-}
-
-function stopRefreshInterval() {
-  if (!refreshInterval) return;
-  clearInterval(refreshInterval);
-  refreshInterval = null;
-}
 
 async function loadStickyTs() {
   if (stickyTs !== undefined) return;
@@ -204,16 +199,7 @@ async function doReposition() {
   await loadStickyTs();
 
   if (cachedBlocks === undefined) {
-    cachedBlocks = await buildBlocksFromThreads(await getAllThreads());
-  }
-
-  if (!cachedBlocks) {
-    // nothing to show, just clear any existing sticky
-    if (stickyTs) {
-      await botClient.chat.delete({ channel: FIREHOUSE_CHANNEL, ts: stickyTs }).catch(() => {});
-      await persistStickyTs(null);
-    }
-    return;
+    cachedBlocks = await buildBlocksFromCases(await getOpenCases());
   }
 
   const oldTs = stickyTs;
@@ -229,18 +215,12 @@ async function doReposition() {
 async function doUpdate() {
   await loadStickyTs();
 
-  cachedBlocks = await buildBlocksFromThreads(await getAllThreads());
+  const openCases = await getOpenCases();
+  cachedBlocks = await buildBlocksFromCases(openCases);
 
-  if (!cachedBlocks) {
-    stopRefreshInterval();
-    if (stickyTs) {
-      await botClient.chat.delete({ channel: FIREHOUSE_CHANNEL, ts: stickyTs }).catch(() => {});
-      await persistStickyTs(null);
-    }
-    return;
+  if (!refreshInterval) {
+    refreshInterval = setInterval(() => enqueue(doUpdate), 60_000);
   }
-
-  startRefreshInterval();
 
   if (!stickyTs) {
     await postSticky();
@@ -313,10 +293,21 @@ export function requestUpdate() {
 export function register(app) {
   app.event("message", async ({ event }) => {
     if (event.channel !== FIREHOUSE_CHANNEL) return;
-    if (event.subtype && event.subtype !== "bot_message" && event.subtype !== "thread_broadcast") return;
-    if (event.thread_ts && event.thread_ts !== event.ts && event.subtype !== "thread_broadcast") return;
+    if (event.subtype && event.subtype !== "bot_message" && event.subtype !== "thread_broadcast")
+      return;
+    if (event.thread_ts && event.thread_ts !== event.ts && event.subtype !== "thread_broadcast")
+      return;
     await loadStickyTs();
     if (event.ts === stickyTs) return;
     requestReposition();
+  });
+
+  app.event("user_change", ({ event }) => {
+    const user = event.user;
+    if (!displayNameCache.has(user.id)) return;
+    const newName = user.profile?.display_name || user.profile?.real_name || user.id;
+    if (displayNameCache.get(user.id) === newName) return;
+    displayNameCache.set(user.id, newName);
+    requestUpdate();
   });
 }

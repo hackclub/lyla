@@ -1,5 +1,5 @@
 import { ALLOWED_CHANNELS } from "../lib/config.js";
-import { addThread, getThread, removeThread } from "../lib/thread-tracker.js";
+import { createCase, getCaseByThread, resolveCase } from "../lib/case-tracker.js";
 import { getConductPromptBlocks } from "../lib/blocks.js";
 import { requestUpdate } from "../jobs/sticky-pending.js";
 
@@ -13,15 +13,15 @@ function register(app) {
     const reaction = event.reaction;
     const isAllowedChannel = ALLOWED_CHANNELS.includes(channel);
 
-    // Hourglass reactions: just track the thread
+    // Hourglass reactions: open a case for this thread
     if (isAllowedChannel && HOURGLASS_EMOJIS.includes(reaction)) {
-      await addThread(channel, event.item.ts, Date.now());
+      await createCase(channel, event.item.ts, Date.now());
       requestUpdate();
     }
 
-    // Ban reaction: track + post conduct-report prompt
+    // Ban reaction: open a case + post conduct-report prompt
     if (isAllowedChannel && reaction === "ban") {
-      await addThread(channel, event.item.ts, Date.now());
+      await createCase(channel, event.item.ts, Date.now());
 
       await client.chat.postMessage({
         channel,
@@ -33,17 +33,16 @@ function register(app) {
       return;
     }
 
-    // Resolve/cancel reactions: clear tracking
+    // Resolve/cancel reactions: close the case
     const isCancel = X_REACTIONS.includes(reaction);
     const isResolve = TICK_REACTIONS.includes(reaction);
 
     if ((isCancel || isResolve) && isAllowedChannel) {
-      const thread = await getThread(channel, event.item.ts);
-      if (!thread) return;
+      const caseData = await getCaseByThread(channel, event.item.ts);
+      if (!caseData) return;
 
-      await removeThread(channel, event.item.ts);
+      await resolveCase(caseData.caseNumber, event.user, isCancel ? "canceled" : "resolved");
       requestUpdate();
-      return;
     }
   });
 }

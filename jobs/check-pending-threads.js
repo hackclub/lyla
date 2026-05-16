@@ -1,4 +1,4 @@
-import { getAllThreads, removeThread } from "../lib/thread-tracker.js";
+import { getOpenCases, resolveCase } from "../lib/case-tracker.js";
 import { botClient } from "../lib/clients.js";
 import { requestUpdate } from "./sticky-pending.js";
 
@@ -12,36 +12,33 @@ async function checkPendingThreads() {
   const now = Date.now();
   let changed = false;
 
-  const threads = await getAllThreads();
+  const openCases = await getOpenCases();
 
-  for (const threadData of threads) {
-    let rootMsg;
+  for (const caseData of openCases) {
+    const primaryThread = caseData.threads.find((t) => t.isPrimary) ?? caseData.threads[0];
+    if (!primaryThread) continue;
+
+    const expired = now - caseData.createdAt > EXPIRY_TIME;
+
+    let reactions = [];
     try {
-      const repliesResp = await botClient.conversations.replies({
-        channel: threadData.channel,
-        ts: threadData.threadTs,
+      const resp = await botClient.conversations.replies({
+        channel: primaryThread.channel,
+        ts: primaryThread.threadTs,
         limit: 1,
         inclusive: true,
       });
-      rootMsg = repliesResp.messages && repliesResp.messages[0];
+      reactions = resp.messages?.[0]?.reactions?.map((r) => r.name) ?? [];
     } catch {
-      continue;
+      if (!expired) continue;
     }
-    if (!rootMsg || !rootMsg.reactions) continue;
 
-    const reactions = rootMsg.reactions.map((r) => r.name);
     const hasTick = TICK_REACTIONS.some((r) => reactions.includes(r));
     const hasX = X_REACTIONS.some((r) => reactions.includes(r));
 
-    if (hasTick || hasX) {
-      await removeThread(threadData.channel, threadData.threadTs);
-      changed = true;
-    }
-  }
-
-  for (const threadData of threads) {
-    if (now - threadData.banReactionTime > EXPIRY_TIME) {
-      await removeThread(threadData.channel, threadData.threadTs);
+    if (hasTick || hasX || expired) {
+      const kind = hasTick ? "resolved" : hasX ? "canceled" : "expired";
+      await resolveCase(caseData.caseNumber, null, kind);
       changed = true;
     }
   }

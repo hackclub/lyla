@@ -1,6 +1,6 @@
 import { NOTIF_CHANNEL } from "../lib/config.js";
 import { userClient, base } from "../lib/clients.js";
-import { getThread, removeThread } from "../lib/thread-tracker.js";
+import { getCaseByThread, resolveCase, recordAction } from "../lib/case-tracker.js";
 import { requestUpdate } from "../jobs/sticky-pending.js";
 
 function register(app) {
@@ -38,9 +38,10 @@ function register(app) {
       const resolvers = values.resolved_by.resolver_select.selected_users;
       const violation = values.violation_deets.violation_deets_input.value;
 
-      // Mark thread as resolved so the sticky drops it.
-      if (await getThread(channel, thread_ts)) {
-        await removeThread(channel, thread_ts);
+      // Resolve the case so the sticky drops it.
+      const caseData = await getCaseByThread(channel, thread_ts);
+      if (caseData) {
+        await resolveCase(caseData.caseNumber, body.user.id, "resolved");
         requestUpdate();
       }
 
@@ -82,6 +83,16 @@ function register(app) {
             },
           },
         ]);
+
+        if (caseData) {
+          await recordAction(caseData.caseNumber, finalSolution, userId, resolvers, {
+            whatTheyDid: violation,
+            displayName,
+            email,
+            banUntil: banDate || null,
+            permalink,
+          });
+        }
       }
 
       const emailLines = allUserIds

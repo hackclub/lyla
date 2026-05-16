@@ -6,9 +6,14 @@ import { runMigrations } from "./lib/db.js";
 
 import registerReactionAdded from "./events/reaction-added.js";
 import registerOpenConductModal from "./actions/open-conduct-modal.js";
+import registerClaimCase from "./actions/claim-case.js";
 import registerConductReportView from "./views/conduct-report.js";
 import registerPrevReports from "./commands/prevreports.js";
-import { register as registerStickyPending, requestUpdate, requestReposition } from "./jobs/sticky-pending.js";
+import {
+  register as registerStickyPending,
+  requestUpdate,
+  requestReposition,
+} from "./jobs/sticky-pending.js";
 
 import checkBansForToday from "./jobs/check-bans-for-today.js";
 import checkPendingThreads from "./jobs/check-pending-threads.js";
@@ -23,6 +28,7 @@ const app = new App({
 
 registerReactionAdded(app);
 registerOpenConductModal(app);
+registerClaimCase(app);
 registerConductReportView(app);
 registerPrevReports(app);
 registerStickyPending(app);
