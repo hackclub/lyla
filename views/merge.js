@@ -57,13 +57,13 @@ function register(app) {
 
     if (fromThread) {
       const toLink = toThread
-        ? `<${threadUrl(toThread.channel, toThread.threadTs)}|#‌${toNum}>`
-        : `#‌${toNum}`;
+        ? `<${threadUrl(toThread.channel, toThread.threadTs)}|#\u200c${toNum}>`
+        : `#\u200c${toNum}`;
       await client.chat
         .postMessage({
           channel: fromThread.channel,
           thread_ts: fromThread.threadTs,
-          text: `${actor} merged this case (#‌${fromNum}) into ${toLink}`,
+          text: `${actor} merged this case (#\u200c${fromNum}) into ${toLink}`,
           unfurl_links: false,
           unfurl_media: false,
         })
@@ -72,13 +72,13 @@ function register(app) {
 
     if (toThread) {
       const fromLink = fromThread
-        ? `<${threadUrl(fromThread.channel, fromThread.threadTs)}|#‌${fromNum}>`
-        : `#‌${fromNum}`;
+        ? `<${threadUrl(fromThread.channel, fromThread.threadTs)}|#\u200c${fromNum}>`
+        : `#\u200c${fromNum}`;
       await client.chat
         .postMessage({
           channel: toThread.channel,
           thread_ts: toThread.threadTs,
-          text: `${actor} merged case ${fromLink} into this case (#‌${toNum})`,
+          text: `${actor} merged case ${fromLink} into this case (#\u200c${toNum})`,
           unfurl_links: false,
           unfurl_media: false,
         })

@@ -32,7 +32,7 @@ function register(app) {
           .postEphemeral({
             channel: body.channel.id,
             user: userId,
-            text: `Case #‌${caseNumber} has already been claimed by ${names}`,
+            text: `Case #\u200c${caseNumber} has already been claimed by ${names}`,
           })
           .catch(() => {});
         return;
@@ -44,7 +44,7 @@ function register(app) {
           .postMessage({
             channel: thread.channel,
             thread_ts: thread.threadTs,
-            text: `<@${userId}> claimed this case (#‌${caseNumber})`,
+            text: `<@${userId}> claimed this case (#\u200c${caseNumber})`,
           })
           .catch(() => {});
       }

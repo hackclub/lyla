@@ -26,7 +26,7 @@ function register(app) {
     if (added.length === 0 && removed.length === 0) return;
 
     const actor = `<@${actorId}>`;
-    const ref = `(#‌${caseNumber})`;
+    const ref = `(#\u200c${caseNumber})`;
     let text;
     if (added.length && removed.length) {
       text = `${actor} removed ${mentionList(removed, actorId)} and assigned ${mentionList(added, actorId)} to this case ${ref}`;
