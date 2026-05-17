@@ -11,6 +11,7 @@ import {
   escapeMrkdwn,
   pingSafe,
   resolveMentions,
+  breakUrls,
   joinList,
 } from "../lib/slack-utils.js";
 
@@ -116,7 +117,7 @@ async function buildBlocksFromCases(openCases) {
     }
 
     const linkText = primary
-      ? `<${threadUrl(primary.channel, primary.threadTs)}|${escapeMrkdwn(snippet)}>`
+      ? `<${threadUrl(primary.channel, primary.threadTs)}|${escapeMrkdwn(breakUrls(snippet))}>`
       : escapeMrkdwn(snippet);
 
     return {
