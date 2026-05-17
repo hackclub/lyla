@@ -125,7 +125,7 @@ async function buildBlocksFromCases(openCases) {
       block_id: `case_${i}`,
       text: {
         type: "mrkdwn",
-        text: `*${i + 1}.* #\u200c${c.caseNumber} (${status})\n${linkText}`,
+        text: `*#\u200c${c.caseNumber}* (${status})\n${linkText}`,
       },
       accessory: {
         type: "overflow",
