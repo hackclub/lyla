@@ -13,7 +13,7 @@
     "postgres": "^3.4.9"
   },
   "scripts": {
-    "dev": "NODE_ENV=development node app.js",
+    "dev": "NODE_ENV=development node --watch app.js",
     "format": "prettier --write ."
   },
   "repository": {
