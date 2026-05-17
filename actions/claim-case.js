@@ -1,10 +1,18 @@
 import { assignCase, getCaseAssignees, getCasePrimaryThread } from "../lib/case-tracker.js";
 import { openEditAssigneesModal, openMergeModal } from "../lib/modals.js";
 import { requestUpdate } from "../jobs/sticky-pending.js";
+import { isAuthorized, UNAUTHORIZED_TEXT } from "../lib/auth.js";
 
 function register(app) {
   app.action("thread_action", async ({ ack, body, action, client }) => {
     await ack();
+
+    if (!await isAuthorized(body.user.id, client)) {
+      await client.chat
+        .postEphemeral({ channel: body.channel.id, user: body.user.id, text: UNAUTHORIZED_TEXT })
+        .catch(() => {});
+      return;
+    }
 
     const value = action.selected_option?.value ?? "";
 

@@ -1,9 +1,15 @@
 import { getCaseByNumber, getCasePrimaryThread, mergeCase } from "../lib/case-tracker.js";
 import { requestUpdate } from "../jobs/sticky-pending.js";
 import { threadUrl } from "../lib/slack-utils.js";
+import { isAuthorized, UNAUTHORIZED_TEXT } from "../lib/auth.js";
 
 function register(app) {
   app.view("merge_cases", async ({ ack, view, body, client }) => {
+    if (!await isAuthorized(body.user.id, client)) {
+      await ack({ response_action: "errors", errors: { from_case: UNAUTHORIZED_TEXT } });
+      return;
+    }
+
     const fromNum = parseInt(view.state.values.from_case.case_select.selected_option?.value, 10);
     const toNum = parseInt(view.state.values.to_case.case_select.selected_option?.value, 10);
 

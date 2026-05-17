@@ -2,9 +2,10 @@ import { NOTIF_CHANNEL } from "../lib/config.js";
 import { userClient, base } from "../lib/clients.js";
 import { getCaseByThread, resolveCase, recordAction } from "../lib/case-tracker.js";
 import { requestUpdate } from "../jobs/sticky-pending.js";
+import { isAuthorized, UNAUTHORIZED_TEXT } from "../lib/auth.js";
 
 function register(app) {
-  app.view("conduct_report", async ({ ack, view, client }) => {
+  app.view("conduct_report", async ({ ack, view, body, client }) => {
     const values = view.state.values;
     const { channel, thread_ts, permalink } = JSON.parse(view.private_metadata);
 
@@ -18,6 +19,11 @@ function register(app) {
       values.solution_deets?.solution_select?.selected_options?.map((opt) => opt.value) || [];
     const customSolution = values.custom_solution?.solution_custom_input?.value?.trim() || "";
     const finalSolution = [dropdownSolutions.join(", "), customSolution].filter(Boolean).join(", ");
+
+    if (!await isAuthorized(body.user.id, client)) {
+      await ack({ response_action: "errors", errors: { reported_users: UNAUTHORIZED_TEXT } });
+      return;
+    }
 
     // Inline validation: tell Slack to show errors in the modal.
     const errors = {};

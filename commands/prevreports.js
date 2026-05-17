@@ -1,9 +1,14 @@
 import { ALLOWED_CHANNELS } from "../lib/config.js";
 import { userClient, base } from "../lib/clients.js";
+import { isAuthorized, UNAUTHORIZED_TEXT } from "../lib/auth.js";
 
 function register(app) {
   app.command(/^\/(.*dev-)?prevreports$/, async ({ command, ack, client, respond }) => {
     await ack();
+    if (!await isAuthorized(command.user_id, client)) {
+      await respond({ text: UNAUTHORIZED_TEXT, response_type: "ephemeral" });
+      return;
+    }
     try {
       if (!ALLOWED_CHANNELS.includes(command.channel_id)) {
         respond({
