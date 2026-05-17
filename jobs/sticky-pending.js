@@ -11,6 +11,7 @@ import {
   escapeMrkdwn,
   pingSafe,
   resolveMentions,
+  joinList,
 } from "../lib/slack-utils.js";
 
 const FIREHOUSE_CHANNEL = ALLOWED_CHANNELS[0];
@@ -108,9 +109,9 @@ async function buildBlocksFromCases(openCases) {
     if (c.assignees.length === 0) {
       status = `unclaimed, ${ago}`;
     } else {
-      const names = c.assignees
-        .map((a) => pingSafe(displayNameCache.get(a.userId) ?? a.userId))
-        .join(", ");
+      const names = joinList(
+        c.assignees.map((a) => pingSafe(displayNameCache.get(a.userId) ?? a.userId))
+      );
       status = `assigned to ${names}, ${ago}`;
     }
 

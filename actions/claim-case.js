@@ -1,4 +1,4 @@
-import { assignCase, getCaseAssignees } from "../lib/case-tracker.js";
+import { assignCase, getCaseAssignees, getCasePrimaryThread } from "../lib/case-tracker.js";
 import { openEditAssigneesModal } from "../lib/modals.js";
 import { requestUpdate } from "../jobs/sticky-pending.js";
 
@@ -34,6 +34,17 @@ function register(app) {
           text: `Case #‌${caseNumber} has already been claimed by ${names}.`,
         });
         return;
+      }
+
+      const thread = await getCasePrimaryThread(caseNumber);
+      if (thread) {
+        await client.chat
+          .postMessage({
+            channel: thread.channel,
+            thread_ts: thread.threadTs,
+            text: `<@${userId}> claimed this case (#‌${caseNumber})`,
+          })
+          .catch(() => {});
       }
 
       requestUpdate();
