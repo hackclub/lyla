@@ -15,6 +15,13 @@
       "when": 1778890158368,
       "tag": "0001_cloudy_stardust",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778984011214,
+      "tag": "0002_optimal_taskmaster",
+      "breakpoints": true
     }
   ]
 }

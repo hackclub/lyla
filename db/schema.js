@@ -27,6 +27,7 @@ export const caseThreads = pgTable(
     threadTs: text("thread_ts").notNull(),
     addedAt: bigint("added_at", { mode: "number" }).notNull(),
     isPrimary: boolean("is_primary").notNull().default(false),
+    snippet: text("snippet"),
   },
   (t) => [primaryKey({ columns: [t.channel, t.threadTs] })]
 );

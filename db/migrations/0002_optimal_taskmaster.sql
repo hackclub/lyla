@@ -1,0 +1,1 @@
+ALTER TABLE "case_threads" ADD COLUMN "snippet" text;

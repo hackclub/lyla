@@ -7,10 +7,8 @@ import { eq } from "drizzle-orm";
 import {
   threadUrl,
   timeAgo,
-  truncateToWordBoundary,
   escapeMrkdwn,
   pingSafe,
-  resolveMentions,
   breakUrls,
   joinList,
 } from "../lib/slack-utils.js";
@@ -18,27 +16,6 @@ import {
 const FIREHOUSE_CHANNEL = ALLOWED_CHANNELS[0];
 const COOLDOWN_MS = 3000;
 const MAX_CASE_BLOCKS = 47; // leaves room for header + "N more" tail within Slack's 50-block limit
-
-// in-memory snippet cache: "${channel}:${threadTs}" -> string
-const snippetCache = new Map();
-
-async function fetchSnippet(channel, threadTs) {
-  const key = `${channel}:${threadTs}`;
-  if (snippetCache.has(key)) return;
-  try {
-    const resp = await botClient.conversations.replies({
-      channel,
-      ts: threadTs,
-      limit: 1,
-      inclusive: true,
-    });
-    const raw = resp.messages?.[0]?.text ?? "";
-    const text = await resolveMentions(raw);
-    snippetCache.set(key, truncateToWordBoundary(text) || "View Thread");
-  } catch {
-    snippetCache.set(key, "View Thread");
-  }
-}
 
 // display name cache: userId -> string
 const displayNameCache = new Map();
@@ -76,22 +53,6 @@ async function buildBlocksFromCases(openCases) {
 
   const sorted = [...openCases].sort((a, b) => a.createdAt - b.createdAt);
 
-  // Fetch snippets for each primary thread
-  await Promise.all(
-    sorted.map((c) => {
-      const primary = c.threads.find((t) => t.isPrimary) ?? c.threads[0];
-      if (primary) return fetchSnippet(primary.channel, primary.threadTs);
-    })
-  );
-
-  // Prune cache entries for cases that are no longer open
-  const activeKeys = new Set(
-    sorted.flatMap((c) => c.threads.map((t) => `${t.channel}:${t.threadTs}`))
-  );
-  for (const key of snippetCache.keys()) {
-    if (!activeKeys.has(key)) snippetCache.delete(key);
-  }
-
   const displayed = sorted.slice(0, MAX_CASE_BLOCKS);
   const overflow = sorted.length - displayed.length;
 
@@ -101,9 +62,7 @@ async function buildBlocksFromCases(openCases) {
 
   const caseBlocks = displayed.map((c, i) => {
     const primary = c.threads.find((t) => t.isPrimary) ?? c.threads[0];
-    const snippet = primary
-      ? (snippetCache.get(`${primary.channel}:${primary.threadTs}`) ?? "View Thread")
-      : "View Thread";
+    const snippet = primary?.snippet ? breakUrls(primary.snippet) : "View Thread";
     const ago = timeAgo(c.createdAt);
 
     let status;
