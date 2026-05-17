@@ -41,7 +41,7 @@ const EMPTY_BLOCKS = [
         type: "rich_text_section",
         elements: [
           { type: "emoji", name: "tada" },
-          { type: "text", text: " No unresolved threads!", style: { bold: true } },
+          { type: "text", text: " No unresolved cases!", style: { bold: true } },
         ],
       },
     ],
@@ -116,7 +116,7 @@ async function buildBlocksFromCases(openCases) {
       type: "section",
       text: {
         type: "mrkdwn",
-        text: ":rotating_light: *Unresolved threads:*",
+        text: ":rotating_light: *Unresolved cases:*",
       },
     },
     ...caseBlocks,
@@ -154,7 +154,7 @@ async function persistStickyTs(ts) {
 async function postSticky() {
   const post = await botClient.chat.postMessage({
     channel: FIREHOUSE_CHANNEL,
-    text: "Unresolved threads",
+    text: "Unresolved cases",
     blocks: cachedBlocks,
     unfurl_links: false,
     unfurl_media: false,
@@ -204,7 +204,7 @@ async function doUpdate() {
     .update({
       channel: FIREHOUSE_CHANNEL,
       ts: stickyTs,
-      text: "Unresolved threads",
+      text: "Unresolved cases",
       blocks: cachedBlocks,
     })
     .catch(async (e) => {
