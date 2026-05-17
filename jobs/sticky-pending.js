@@ -140,7 +140,7 @@ async function buildBlocksFromCases(openCases) {
               ]
             : []),
           {
-            text: { type: "plain_text", text: "Edit Assignees", emoji: false },
+            text: { type: "plain_text", text: "Edit assignees...", emoji: false },
             value: `edit_assignees:${c.caseNumber}`,
           },
         ],

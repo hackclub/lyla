@@ -17,6 +17,16 @@ features:
       description: Check a user's previous reports
       usage_hint: "[@userID | email] [slack | airtable]"
       should_escape: true
+    - command: /lyla-assignees
+      url: https://lyla.hackclub.com/slack/events
+      description: Edit assignees for a case
+      usage_hint: "[case number]"
+      should_escape: false
+    - command: /lyla-merge
+      url: https://lyla.hackclub.com/slack/events
+      description: Merge one case into another
+      usage_hint: "[from] into [to]"
+      should_escape: false
 oauth_config:
   redirect_urls:
     - "https://lyla.hackclub.com/slack/events"

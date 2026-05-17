@@ -11,6 +11,7 @@ import registerConductReportView from "./views/conduct-report.js";
 import registerEditAssigneesView from "./views/edit-assignees.js";
 import registerPrevReports from "./commands/prevreports.js";
 import registerAssignees from "./commands/assignees.js";
+import registerMerge from "./commands/merge.js";
 import {
   register as registerStickyPending,
   requestUpdate,
@@ -35,6 +36,7 @@ registerConductReportView(app);
 registerEditAssigneesView(app);
 registerPrevReports(app);
 registerAssignees(app);
+registerMerge(app);
 registerStickyPending(app);
 
 (async () => {
