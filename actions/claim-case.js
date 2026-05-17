@@ -1,5 +1,5 @@
 import { assignCase, getCaseAssignees, getCasePrimaryThread } from "../lib/case-tracker.js";
-import { openEditAssigneesModal } from "../lib/modals.js";
+import { openEditAssigneesModal, openMergeModal } from "../lib/modals.js";
 import { requestUpdate } from "../jobs/sticky-pending.js";
 
 function register(app) {
@@ -28,11 +28,13 @@ function register(app) {
           })
         );
         const names = assigneeNames.length > 0 ? assigneeNames.join(", ") : "someone";
-        await client.chat.postEphemeral({
-          channel: body.channel.id,
-          user: userId,
-          text: `Case #‌${caseNumber} has already been claimed by ${names}.`,
-        });
+        await client.chat
+          .postEphemeral({
+            channel: body.channel.id,
+            user: userId,
+            text: `Case #‌${caseNumber} has already been claimed by ${names}`,
+          })
+          .catch(() => {});
         return;
       }
 
@@ -55,6 +57,13 @@ function register(app) {
       const caseNumber = parseInt(value.slice("edit_assignees:".length), 10);
       if (isNaN(caseNumber)) return;
       await openEditAssigneesModal(client, body.trigger_id, caseNumber);
+      return;
+    }
+
+    if (value.startsWith("merge:")) {
+      const caseNumber = parseInt(value.slice("merge:".length), 10);
+      if (isNaN(caseNumber)) return;
+      await openMergeModal(client, body.trigger_id, caseNumber);
     }
   });
 }

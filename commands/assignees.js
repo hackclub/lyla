@@ -13,7 +13,7 @@ function register(app) {
 
     const caseData = await getCaseByNumber(caseNumber);
     if (!caseData) {
-      await respond({ text: `Case #${caseNumber} not found.`, response_type: "ephemeral" });
+      await respond({ text: `Case #${caseNumber} not found`, response_type: "ephemeral" });
       return;
     }
 

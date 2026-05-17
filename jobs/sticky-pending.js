@@ -102,6 +102,10 @@ async function buildBlocksFromCases(openCases) {
             text: { type: "plain_text", text: "Edit assignees...", emoji: false },
             value: `edit_assignees:${c.caseNumber}`,
           },
+          {
+            text: { type: "plain_text", text: "Merge into...", emoji: false },
+            value: `merge:${c.caseNumber}`,
+          },
         ],
       },
     };

@@ -27,19 +27,21 @@ async function checkBansForToday() {
       return `<@${userId}>'s ban/shush ends today (${banEndDate}), react ✅ if unbanned :)`;
     });
 
-    await botClient.chat.postMessage({
-      channel: ALLOWED_CHANNELS[0],
-      text: "Unban awaiting!!",
-      blocks: [
-        {
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: banMessages.join("\n\n"),
+    await botClient.chat
+      .postMessage({
+        channel: ALLOWED_CHANNELS[0],
+        text: "Unban awaiting!!",
+        blocks: [
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: banMessages.join("\n\n"),
+            },
           },
-        },
-      ],
-    });
+        ],
+      })
+      .catch((e) => console.error("Could not post unban reminder:", e.message));
   }
 }
 

@@ -12,6 +12,8 @@ import registerEditAssigneesView from "./views/edit-assignees.js";
 import registerPrevReports from "./commands/prevreports.js";
 import registerAssignees from "./commands/assignees.js";
 import registerMerge from "./commands/merge.js";
+import registerMergeView from "./views/merge.js";
+import { registerCaseOptions } from "./lib/case-options.js";
 import {
   register as registerStickyPending,
   requestUpdate,
@@ -37,6 +39,8 @@ registerEditAssigneesView(app);
 registerPrevReports(app);
 registerAssignees(app);
 registerMerge(app);
+registerMergeView(app);
+registerCaseOptions(app);
 registerStickyPending(app);
 
 (async () => {

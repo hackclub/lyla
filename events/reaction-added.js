@@ -23,12 +23,14 @@ function register(app) {
     if (isAllowedChannel && reaction === "ban") {
       await createCase(channel, event.item.ts, Date.now());
 
-      await client.chat.postMessage({
-        channel,
-        thread_ts: event.item.ts,
-        text: "Wanna file a conduct report?",
-        blocks: getConductPromptBlocks(),
-      });
+      await client.chat
+        .postMessage({
+          channel,
+          thread_ts: event.item.ts,
+          text: "Wanna file a conduct report?",
+          blocks: getConductPromptBlocks(),
+        })
+        .catch((e) => console.error("Could not post conduct prompt:", e.message));
       requestUpdate();
       return;
     }
