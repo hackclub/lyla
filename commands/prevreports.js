@@ -3,7 +3,7 @@ import { userClient, base } from "../lib/clients.js";
 import { isAuthorized, UNAUTHORIZED_TEXT } from "../lib/auth.js";
 
 function register(app) {
-  app.command(/^\/(.*dev-)?prevreports$/, async ({ command, ack, client, respond }) => {
+  app.command(/^\/(.*dev-|demo-)?prevreports$/, async ({ command, ack, client, respond }) => {
     await ack();
     if (!(await isAuthorized(command.user_id, client))) {
       await respond({ text: UNAUTHORIZED_TEXT, response_type: "ephemeral" });
