@@ -1,7 +1,7 @@
-import { NOTIF_CHANNEL } from "../lib/config.js";
+import { NOTIF_CHANNEL, isDev } from "../lib/config.js";
 import { userClient, base } from "../lib/clients.js";
 import { getCaseByThread, resolveCase, recordAction } from "../lib/case-tracker.js";
-import { requestUpdate } from "../jobs/sticky-pending.js";
+import { requestUpdate, requestReposition } from "../jobs/sticky-pending.js";
 import { isAuthorized, UNAUTHORIZED_TEXT } from "../lib/auth.js";
 
 function register(app) {
@@ -168,6 +168,7 @@ function register(app) {
             channel: NOTIF_CHANNEL,
             text: notifmsg,
           });
+          if (isDev) requestReposition();
         }
       }
     } catch (error) {
