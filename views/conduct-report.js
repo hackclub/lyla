@@ -1,8 +1,9 @@
-import { NOTIF_CHANNEL, isDev } from "../lib/config.js";
+import { NOTIF_CHANNEL, isDev, isDemoMode } from "../lib/config.js";
 import { userClient, base } from "../lib/clients.js";
 import { getCaseByThread, resolveCase, recordAction } from "../lib/case-tracker.js";
 import { requestUpdate, requestReposition } from "../jobs/sticky-pending.js";
 import { isAuthorized, UNAUTHORIZED_TEXT } from "../lib/auth.js";
+import { escapeMrkdwn } from "../lib/slack-utils.js";
 
 function register(app) {
   app.view("conduct_report", async ({ ack, view, body, client }) => {
@@ -17,7 +18,8 @@ function register(app) {
 
     const dropdownSolutions =
       values.solution_deets?.solution_select?.selected_options?.map((opt) => opt.value) || [];
-    const customSolution = values.custom_solution?.solution_custom_input?.value?.trim() || "";
+    const rawCustomSolution = values.custom_solution?.solution_custom_input?.value?.trim() || "";
+    const customSolution = isDemoMode ? escapeMrkdwn(rawCustomSolution) : rawCustomSolution;
     const finalSolution = [dropdownSolutions.join(", "), customSolution].filter(Boolean).join(", ");
 
     if (!(await isAuthorized(body.user.id, client))) {
@@ -41,8 +43,12 @@ function register(app) {
 
     try {
       const banDate = values.ban_until.ban_date_input.selected_date;
-      const resolvers = values.resolved_by.resolver_select.selected_users;
-      const violation = values.violation_deets.violation_deets_input.value;
+      const rawResolvers = values.resolved_by.resolver_select.selected_users;
+      const resolvers = isDemoMode
+        ? [body.user.id, ...rawResolvers.filter((id) => id !== body.user.id)]
+        : rawResolvers;
+      const rawViolation = values.violation_deets.violation_deets_input.value;
+      const violation = isDemoMode ? escapeMrkdwn(rawViolation) : rawViolation;
 
       // Resolve the case so the sticky drops it.
       const caseData = await getCaseByThread(channel, thread_ts);
