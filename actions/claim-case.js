@@ -1,5 +1,5 @@
 import { assignCase, getCaseAssignees, getCasePrimaryThread } from "../lib/case-tracker.js";
-import { openEditAssigneesModal, openMergeModal } from "../lib/modals.js";
+import { openEditAssigneesModal, openMergeModal, openCaseInfoModal } from "../lib/modals.js";
 import { requestUpdate } from "../jobs/sticky-pending.js";
 import { isAuthorized, UNAUTHORIZED_TEXT } from "../lib/auth.js";
 
@@ -7,7 +7,7 @@ function register(app) {
   app.action("thread_action", async ({ ack, body, action, client }) => {
     await ack();
 
-    if (!await isAuthorized(body.user.id, client)) {
+    if (!(await isAuthorized(body.user.id, client))) {
       await client.chat
         .postEphemeral({ channel: body.channel.id, user: body.user.id, text: UNAUTHORIZED_TEXT })
         .catch(() => {});
@@ -72,6 +72,13 @@ function register(app) {
       const caseNumber = parseInt(value.slice("merge:".length), 10);
       if (isNaN(caseNumber)) return;
       await openMergeModal(client, body.trigger_id, caseNumber);
+      return;
+    }
+
+    if (value.startsWith("case_info:")) {
+      const caseNumber = parseInt(value.slice("case_info:".length), 10);
+      if (isNaN(caseNumber)) return;
+      await openCaseInfoModal(client, body.trigger_id, caseNumber);
     }
   });
 }

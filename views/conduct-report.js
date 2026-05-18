@@ -20,7 +20,7 @@ function register(app) {
     const customSolution = values.custom_solution?.solution_custom_input?.value?.trim() || "";
     const finalSolution = [dropdownSolutions.join(", "), customSolution].filter(Boolean).join(", ");
 
-    if (!await isAuthorized(body.user.id, client)) {
+    if (!(await isAuthorized(body.user.id, client))) {
       await ack({ response_action: "errors", errors: { reported_users: UNAUTHORIZED_TEXT } });
       return;
     }

@@ -27,6 +27,11 @@ features:
       url: https://lyla.hackclub.com/slack/events
       description: Merge one case into another
       should_escape: false
+    - command: /lyla-case
+      url: https://lyla.hackclub.com/slack/events
+      description: View and edit a case
+      usage_hint: "[case number]"
+      should_escape: false
 oauth_config:
   redirect_urls:
     - "https://lyla.hackclub.com/slack/events"

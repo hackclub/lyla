@@ -106,6 +106,10 @@ async function buildBlocksFromCases(openCases) {
             text: { type: "plain_text", text: "Merge into...", emoji: false },
             value: `merge:${c.caseNumber}`,
           },
+          {
+            text: { type: "plain_text", text: "Case info...", emoji: false },
+            value: `case_info:${c.caseNumber}`,
+          },
         ],
       },
     };
