@@ -99,6 +99,12 @@ function register(app) {
           unfurl_media: false,
         });
       } else if (source.toLowerCase() === "airtable") {
+        if (!base) {
+          return await respond({
+            text: "Airtable is not configured on this instance.",
+            response_type: "ephemeral",
+          });
+        }
         const filterFormula = isEmail
           ? `{Email} = '${cleanUserId}'`
           : `{User Being Dealt With} = '${cleanUserId}'`;

@@ -74,21 +74,23 @@ function register(app) {
 
         userInfo.set(userId, { displayName, email });
 
-        await base("LYLA Records").create([
-          {
-            fields: {
-              "Time Of Report": new Date().toISOString(),
-              "Dealt With By": resolvers.join(", "),
-              "User Being Dealt With": userId,
-              "Display Name": displayName,
-              "What Did User Do": violation,
-              "How Was This Resolved": finalSolution,
-              "If Banned, Until When": banDate || null,
-              "Link To Message": permalink,
-              Email: email,
+        if (base) {
+          await base("LYLA Records").create([
+            {
+              fields: {
+                "Time Of Report": new Date().toISOString(),
+                "Dealt With By": resolvers.join(", "),
+                "User Being Dealt With": userId,
+                "Display Name": displayName,
+                "What Did User Do": violation,
+                "How Was This Resolved": finalSolution,
+                "If Banned, Until When": banDate || null,
+                "Link To Message": permalink,
+                Email: email,
+              },
             },
-          },
-        ]);
+          ]);
+        }
 
         if (caseData) {
           await recordAction(caseData.caseNumber, finalSolution, userId, resolvers, {

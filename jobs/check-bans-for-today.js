@@ -2,6 +2,7 @@ import { ALLOWED_CHANNELS } from "../lib/config.js";
 import { botClient, base } from "../lib/clients.js";
 
 async function checkBansForToday() {
+  if (!base) return;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const records = await base("LYLA Records")
