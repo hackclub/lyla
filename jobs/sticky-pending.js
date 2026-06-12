@@ -1,4 +1,4 @@
-import { ALLOWED_CHANNELS } from "../lib/config.js";
+import { FIREHOUSE_CHANNEL } from "../lib/config.js";
 import { getOpenCases } from "../lib/case-tracker.js";
 import { botClient } from "../lib/clients.js";
 import { db } from "../lib/db.js";
@@ -13,7 +13,6 @@ import {
   joinList,
 } from "../lib/slack-utils.js";
 
-const FIREHOUSE_CHANNEL = ALLOWED_CHANNELS[0];
 const COOLDOWN_MS = 3000;
 const MAX_CASE_BLOCKS = 47; // leaves room for header + "N more" tail within Slack's 50-block limit
 

@@ -1,4 +1,4 @@
-import { ALLOWED_CHANNELS } from "../lib/config.js";
+import { FIREHOUSE_CHANNEL } from "../lib/config.js";
 import { botClient, base } from "../lib/clients.js";
 
 async function checkBansForToday() {
@@ -30,7 +30,7 @@ async function checkBansForToday() {
 
     await botClient.chat
       .postMessage({
-        channel: ALLOWED_CHANNELS[0],
+        channel: FIREHOUSE_CHANNEL,
         text: "Unban awaiting!!",
         blocks: [
           {
