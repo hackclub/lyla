@@ -15,7 +15,16 @@ function register(app) {
 
     // Hourglass reactions: open a case for this thread
     if (isAllowedChannel && HOURGLASS_EMOJIS.includes(reaction)) {
-      await createCase(channel, event.item.ts, Date.now());
+      const caseData = await createCase(channel, event.item.ts, Date.now());
+      if (caseData?.isNew) {
+        await client.chat
+          .postMessage({
+            channel,
+            thread_ts: event.item.ts,
+            text: `Case #\u200c${caseData.caseNumber}`,
+          })
+          .catch((e) => console.error("Could not post case number:", e.message));
+      }
       requestUpdate();
     }
 

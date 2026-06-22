@@ -3,6 +3,8 @@ import { requestUpdate } from "../jobs/sticky-pending.js";
 import { threadUrl } from "../lib/slack-utils.js";
 import { isAuthorized, UNAUTHORIZED_TEXT } from "../lib/auth.js";
 
+const MERGE_REACTION = "repeat";
+
 function register(app) {
   app.view("merge_cases", async ({ ack, view, body, client }) => {
     if (!(await isAuthorized(body.user.id, client))) {
@@ -72,6 +74,24 @@ function register(app) {
           text: `${actor} merged this case (#\u200c${fromNum}) into ${toLink}`,
           unfurl_links: false,
           unfurl_media: false,
+        })
+        .catch(() => {});
+      await client.reactions
+        .add({
+          channel: fromThread.channel,
+          timestamp: fromThread.threadTs,
+          name: MERGE_REACTION,
+        })
+        .catch((e) => {
+          if (e.data?.error !== "already_reacted") {
+            console.error("Could not add merge reaction:", e.message);
+          }
+        });
+      await client.reactions
+        .remove({
+          channel: fromThread.channel,
+          timestamp: fromThread.threadTs,
+          name: "hourglass",
         })
         .catch(() => {});
     }
