@@ -21,6 +21,11 @@ function register(app) {
     const rawCustomSolution = values.custom_solution?.solution_custom_input?.value?.trim() || "";
     const customSolution = isDemoMode ? escapeMrkdwn(rawCustomSolution) : rawCustomSolution;
     const finalSolution = [dropdownSolutions.join(", "), customSolution].filter(Boolean).join(", ");
+    const solutionNorm = finalSolution.toLowerCase().replace(/[\s\-_]/g, "");
+    const isChannelBan = solutionNorm.includes("channelban");
+    const banDate = values.ban_until?.ban_date_input?.selected_date;
+    const channelBanChannelId =
+      values.channel_ban_channel?.channel_ban_select?.selected_channel || null;
 
     if (!(await isAuthorized(body.user.id, client))) {
       await ack({ response_action: "errors", errors: { reported_users: UNAUTHORIZED_TEXT } });
@@ -35,6 +40,14 @@ function register(app) {
     if (!finalSolution) {
       errors.solution_deets = "Pick a solution above or describe one below.";
     }
+    if (isChannelBan) {
+      if (!banDate) {
+        errors.ban_until = "Pick an expiry date for the channelban.";
+      }
+      if (!channelBanChannelId) {
+        errors.channel_ban_channel = "Pick the channel for the channelban.";
+      }
+    }
     if (Object.keys(errors).length > 0) {
       return await ack({ response_action: "errors", errors });
     }
@@ -42,13 +55,23 @@ function register(app) {
     await ack();
 
     try {
-      const banDate = values.ban_until.ban_date_input.selected_date;
       const rawResolvers = values.resolved_by.resolver_select.selected_users;
       const resolvers = isDemoMode
         ? [body.user.id, ...rawResolvers.filter((id) => id !== body.user.id)]
         : rawResolvers;
       const rawViolation = values.violation_deets.violation_deets_input.value;
       const violation = isDemoMode ? escapeMrkdwn(rawViolation) : rawViolation;
+
+      let channelBanChannelValue = channelBanChannelId;
+      if (channelBanChannelId) {
+        try {
+          const info = await client.conversations.info({ channel: channelBanChannelId });
+          const name = info.channel?.name;
+          if (name) channelBanChannelValue = `#${name}`;
+        } catch (error) {
+          console.error(`Could not fetch ${channelBanChannelId}:`, error.message);
+        }
+      }
 
       // Resolve the case so the sticky drops it.
       const caseData = await getCaseByThread(channel, thread_ts);
@@ -91,6 +114,7 @@ function register(app) {
                 "What Did User Do": violation,
                 "How Was This Resolved": finalSolution,
                 "If Banned, Until When": banDate || null,
+                channel_ban_channel: channelBanChannelValue || null,
                 "Link To Message": permalink,
                 Email: email,
               },
@@ -104,6 +128,7 @@ function register(app) {
             displayName,
             email,
             banUntil: banDate || null,
+            channelBanChannel: channelBanChannelId || null,
             permalink,
           });
         }
@@ -131,6 +156,7 @@ function register(app) {
               })
             : "N/A"
         }`,
+        ...(channelBanChannelId ? [`*Channel Ban Channel:*\n<#${channelBanChannelId}>`] : []),
         `*Link To Message:*\n${permalink}`,
       ];
 
@@ -150,15 +176,19 @@ function register(app) {
         ],
       });
 
-      if (banDate || finalSolution.toLowerCase().includes("perma")) {
-        const solution = finalSolution.toLowerCase().replace(/[\s\-_]/g, "");
-        const excludeChannel = solution.includes("channelban") || solution.includes("channelshush");
+      const isIndefBan = solutionNorm.includes("indefban");
+      const isPermaBan = solutionNorm.includes("permaban") && !isIndefBan;
+
+      if (banDate || isIndefBan || isPermaBan) {
+        const excludeChannel = isChannelBan || solutionNorm.includes("channelshush");
 
         if (!excludeChannel) {
           const userMention = allUserIds.map((id) => `<@${id.replace(/[<@>]/g, "")}>`).join(", ");
 
           let notifmsg;
-          if (finalSolution.toLowerCase().includes("perma")) {
+          if (isIndefBan) {
+            notifmsg = `${userMention} has been indefinitely banned... be good kids ^^`;
+          } else if (isPermaBan) {
             notifmsg = `${userMention} has been permanently banned... be good kids ^^`;
           } else {
             const dateFormat = new Date(banDate).toLocaleDateString("en-GB", {

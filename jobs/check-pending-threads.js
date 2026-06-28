@@ -1,8 +1,8 @@
 import { getOpenCases, resolveCase } from "../lib/case-tracker.js";
 import { botClient } from "../lib/clients.js";
+import { isTickReaction } from "../lib/slack-utils.js";
 import { requestUpdate } from "./sticky-pending.js";
 
-const TICK_REACTIONS = ["heavy_check_mark", "white_tick", "white_check_mark", "check"];
 const X_REACTIONS = ["x"];
 const EXPIRY_TIME = 10 * 24 * 60 * 60 * 1000;
 
@@ -33,7 +33,7 @@ async function checkPendingThreads() {
       if (!expired) continue;
     }
 
-    const hasTick = TICK_REACTIONS.some((r) => reactions.includes(r));
+    const hasTick = reactions.some(isTickReaction);
     const hasX = X_REACTIONS.some((r) => reactions.includes(r));
 
     if (hasTick || hasX || expired) {
