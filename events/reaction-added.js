@@ -68,6 +68,7 @@ function register(app) {
     const isResolve = isTickReaction(reaction);
 
     if (isCancel || isResolve) {
+      if (event.item.ts !== threadTs) return;
       const caseData = await getCaseByThread(channel, threadTs);
       if (!caseData) return;
 
