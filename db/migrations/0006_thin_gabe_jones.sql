@@ -1,0 +1,1 @@
+ALTER TABLE "case_actions" ADD COLUMN "ucat_id" text;

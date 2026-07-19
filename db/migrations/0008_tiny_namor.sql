@@ -1,0 +1,1 @@
+ALTER TABLE "case_actions" ADD COLUMN "airtable_record_id" text;

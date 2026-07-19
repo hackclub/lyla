@@ -109,8 +109,9 @@ function register(app) {
 
         userInfo.set(userId, { displayName, email });
 
+        let airtableRecordId = null;
         if (base) {
-          await base("LYLA Records").create([
+          const created = await base("LYLA Records").create([
             {
               fields: {
                 "Time Of Report": new Date().toISOString(),
@@ -126,6 +127,7 @@ function register(app) {
               },
             },
           ]);
+          airtableRecordId = created[0]?.id ?? null;
         }
 
         if (caseData) {
@@ -142,7 +144,7 @@ function register(app) {
               channelBanChannel: channelBanChannelId || null,
               permalink,
             },
-            { categoryCode, categoryExtra }
+            { categoryCode, categoryExtra, airtableRecordId }
           );
         }
       }

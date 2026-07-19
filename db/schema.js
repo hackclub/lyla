@@ -57,6 +57,9 @@ export const caseActions = pgTable("case_actions", {
   }),
   categoryExtra: text("category_extra"),
   updatedAt: bigint("updated_at", { mode: "number" }),
+  ucatId: text("ucat_id"),
+  ucatSyncPending: boolean("ucat_sync_pending").notNull().default(false),
+  airtableRecordId: text("airtable_record_id"),
 });
 
 export const infractionCategories = pgTable("infraction_categories", {

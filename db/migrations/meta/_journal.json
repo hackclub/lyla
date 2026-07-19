@@ -43,6 +43,27 @@
       "when": 1783172823874,
       "tag": "0005_awesome_toxin",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784040666368,
+      "tag": "0006_thin_gabe_jones",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784044878889,
+      "tag": "0007_majestic_ser_duncan",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784141047426,
+      "tag": "0008_tiny_namor",
+      "breakpoints": true
     }
   ]
 }

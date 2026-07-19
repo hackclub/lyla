@@ -196,12 +196,8 @@
           "name": "case_actions_category_code_infraction_categories_code_fk",
           "tableFrom": "case_actions",
           "tableTo": "infraction_categories",
-          "columnsFrom": [
-            "category_code"
-          ],
-          "columnsTo": [
-            "code"
-          ],
+          "columnsFrom": ["category_code"],
+          "columnsTo": ["code"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -246,10 +242,7 @@
       "compositePrimaryKeys": {
         "case_assignees_case_number_user_id_pk": {
           "name": "case_assignees_case_number_user_id_pk",
-          "columns": [
-            "case_number",
-            "user_id"
-          ]
+          "columns": ["case_number", "user_id"]
         }
       },
       "uniqueConstraints": {},
@@ -304,10 +297,7 @@
       "compositePrimaryKeys": {
         "case_threads_channel_thread_ts_pk": {
           "name": "case_threads_channel_thread_ts_pk",
-          "columns": [
-            "channel",
-            "thread_ts"
-          ]
+          "columns": ["channel", "thread_ts"]
         }
       },
       "uniqueConstraints": {},
