@@ -1,7 +1,7 @@
 import "../lib/config.js";
 import { base } from "../lib/clients.js";
 import { db } from "../lib/db.js";
-import { cases, caseActions } from "../db/schema.js";
+import { caseActions } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import { mapAirtableFields } from "../lib/airtable-fields.js";
 import {
@@ -10,12 +10,6 @@ import {
 } from "../lib/case-tracker.js";
 
 const TABLE_NAME = "LYLA Records";
-
-function parseDate(value, fallbackIso) {
-  const d = value ? new Date(value) : fallbackIso ? new Date(fallbackIso) : null;
-  const ms = d?.getTime();
-  return Number.isFinite(ms) ? ms : Date.now();
-}
 
 async function findMatch(targetUserId, permalink, whatTheyDid) {
   if (!targetUserId || !permalink) return { match: null, ambiguous: false };
@@ -44,7 +38,7 @@ async function main() {
 
   let alreadyReconciled = 0;
   let matched = 0;
-  let created = 0;
+  let unmatched = 0;
   let ambiguous = 0;
   let skippedNoUser = 0;
 
@@ -90,35 +84,14 @@ async function main() {
       continue;
     }
 
-    const performedAt = parseDate(record.fields["Time Of Report"], record._rawJson.createdTime);
-
-    const [newCase] = await db
-      .insert(cases)
-      .values({
-        status: "resolved",
-        createdAt: performedAt,
-        resolvedAt: performedAt,
-        resolvedBy: mapped.performedBy?.[0] ?? null,
-        resolutionKind: "resolved",
-      })
-      .returning();
-
-    await db.insert(caseActions).values({
-      caseNumber: newCase.caseNumber,
-      actionType: mapped.actionType || "unknown",
-      targetUserId: mapped.targetUserId,
-      performedBy: mapped.performedBy?.length ? mapped.performedBy : ["unknown"],
-      data: mapped.data ?? {},
-      performedAt,
-      airtableRecordId: record.id,
-    });
-
-    created++;
-    console.log(`Created case #${newCase.caseNumber} for ${record.id}`);
+    console.log(
+      `No matching case_action for ${record.id} (user ${mapped.targetUserId}), leaving unlinked`
+    );
+    unmatched++;
   }
 
   console.log(
-    `Done. ${alreadyReconciled} already reconciled, ${matched} matched, ${created} created, ${ambiguous} ambiguous, ${skippedNoUser} skipped (no target user).`
+    `Done. ${alreadyReconciled} already reconciled, ${matched} matched, ${unmatched} unmatched (no existing case, nothing created), ${ambiguous} ambiguous, ${skippedNoUser} skipped (no target user).`
   );
 }
 
