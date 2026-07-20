@@ -21,11 +21,11 @@ function register(app) {
     const rawCustomSolution = values.custom_solution?.solution_custom_input?.value?.trim() || "";
     const customSolution = isDemoMode ? escapeMrkdwn(rawCustomSolution) : rawCustomSolution;
     const finalSolution = [dropdownSolutions.join(", "), customSolution].filter(Boolean).join(", ");
-    const solutionNorm = finalSolution.toLowerCase().replace(/[\s\-_]/g, "");
-    const isChannelBan = solutionNorm.includes("channelban");
+    const isChannelBan = dropdownSolutions.includes("Channel Ban");
     const banDate = values.ban_until?.ban_date_input?.selected_date;
     const channelBanChannelId =
       values.channel_ban_channel?.channel_ban_select?.selected_channel || null;
+    const logType = values.log_type?.log_type_select?.selected_option?.value ?? null;
     const parsedCategoryCode = parseInt(
       values.category?.category_select?.selected_option?.value,
       10
@@ -53,6 +53,9 @@ function register(app) {
       if (!channelBanChannelId) {
         errors.channel_ban_channel = "Pick the channel for the channelban.";
       }
+    }
+    if (logType === "temp" && !banDate) {
+      errors.ban_until = "Pick an expiry date for the temp ban/shush announcement.";
     }
     if (Object.keys(errors).length > 0) {
       return await ack({ response_action: "errors", errors });
@@ -191,36 +194,29 @@ function register(app) {
         ],
       });
 
-      const isIndefBan = solutionNorm.includes("indefban");
-      const isPermaBan = solutionNorm.includes("permaban") && !isIndefBan;
+      if (logType !== "none" && logType !== null) {
+        const userMention = allUserIds.map((id) => `<@${id.replace(/[<@>]/g, "")}>`).join(", ");
 
-      if (banDate || isIndefBan || isPermaBan) {
-        const excludeChannel = isChannelBan || solutionNorm.includes("channelshush");
-
-        if (!excludeChannel) {
-          const userMention = allUserIds.map((id) => `<@${id.replace(/[<@>]/g, "")}>`).join(", ");
-
-          let notifmsg;
-          if (isIndefBan) {
-            notifmsg = `${userMention} has been indefinitely banned... be good kids ^^`;
-          } else if (isPermaBan) {
-            notifmsg = `${userMention} has been permanently banned... be good kids ^^`;
-          } else {
-            const dateFormat = new Date(banDate).toLocaleDateString("en-GB", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            });
-            const action = finalSolution.toLowerCase().includes("shush") ? "shushed" : "banned";
-            notifmsg = `${userMention} has been ${action} until ${dateFormat}... be good kids ^^`;
-          }
-
-          await client.chat.postMessage({
-            channel: NOTIF_CHANNEL,
-            text: notifmsg,
+        let notifmsg;
+        if (logType === "indef_ban") {
+          notifmsg = `${userMention} has been indefinitely banned... be good kids ^^`;
+        } else if (logType === "perma_ban") {
+          notifmsg = `${userMention} has been permanently banned... be good kids ^^`;
+        } else {
+          const dateFormat = new Date(banDate).toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
           });
-          if (isDev) requestReposition();
+          const action = dropdownSolutions.includes("Shush") ? "shushed" : "banned";
+          notifmsg = `${userMention} has been ${action} until ${dateFormat}... be good kids ^^`;
         }
+
+        await client.chat.postMessage({
+          channel: NOTIF_CHANNEL,
+          text: notifmsg,
+        });
+        if (isDev) requestReposition();
       }
     } catch (error) {
       console.error(error);
