@@ -5,6 +5,42 @@ import { requestUpdate, requestReposition } from "../jobs/sticky-pending.js";
 import { isAuthorized, UNAUTHORIZED_TEXT } from "../lib/auth.js";
 import { escapeMrkdwn } from "../lib/slack-utils.js";
 
+function formatBanDate(date) {
+  return new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+function minimumTermInMonths(startDate, eligibleDate) {
+  const start = new Date(startDate);
+  const eligible = new Date(`${eligibleDate}T00:00:00Z`);
+  let months =
+    (eligible.getUTCFullYear() - start.getUTCFullYear()) * 12 +
+    eligible.getUTCMonth() -
+    start.getUTCMonth();
+  if (eligible.getUTCDate() < start.getUTCDate()) months -= 1;
+  return Math.max(1, months);
+}
+
+export function buildAnnouncementMessage({ logType, userMention, banDate, isShush, now }) {
+  if (logType === "indef_ban") {
+    return `${userMention} has been indefinitely banned... be good kids ^^`;
+  }
+  if (logType === "perma_ban") {
+    return `${userMention} has been permanently banned... be good kids ^^`;
+  }
+  if (logType === "indef_ban_minimum") {
+    const months = minimumTermInMonths(now, banDate);
+    const monthLabel = months === 1 ? "month" : "months";
+    return `${userMention} has been indefinitely banned for a minimum of ${months} ${monthLabel} (eligible for appeal/review on ${formatBanDate(banDate)})... be good kids ^^`;
+  }
+  const action = isShush ? "shushed" : "banned";
+  return `${userMention} has been ${action} until ${formatBanDate(banDate)}... be good kids ^^`;
+}
+
 function register(app) {
   app.view("conduct_report", async ({ ack, view, body, client }) => {
     const values = view.state.values;
@@ -56,6 +92,9 @@ function register(app) {
     }
     if (logType === "temp" && !banDate) {
       errors.ban_until = "Pick an expiry date for the temp ban/shush announcement.";
+    }
+    if (logType === "indef_ban_minimum" && !banDate) {
+      errors.ban_until = "Pick the earliest appeal/review date for the minimum-term ban.";
     }
     if (Object.keys(errors).length > 0) {
       return await ack({ response_action: "errors", errors });
@@ -197,20 +236,13 @@ function register(app) {
       if (logType !== "none" && logType !== null) {
         const userMention = allUserIds.map((id) => `<@${id.replace(/[<@>]/g, "")}>`).join(", ");
 
-        let notifmsg;
-        if (logType === "indef_ban") {
-          notifmsg = `${userMention} has been indefinitely banned... be good kids ^^`;
-        } else if (logType === "perma_ban") {
-          notifmsg = `${userMention} has been permanently banned... be good kids ^^`;
-        } else {
-          const dateFormat = new Date(banDate).toLocaleDateString("en-GB", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          });
-          const action = dropdownSolutions.includes("Shush") ? "shushed" : "banned";
-          notifmsg = `${userMention} has been ${action} until ${dateFormat}... be good kids ^^`;
-        }
+        const notifmsg = buildAnnouncementMessage({
+          logType,
+          userMention,
+          banDate,
+          isShush: dropdownSolutions.includes("Shush"),
+          now: new Date(),
+        });
 
         await client.chat.postMessage({
           channel: NOTIF_CHANNEL,
