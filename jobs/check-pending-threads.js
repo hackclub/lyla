@@ -6,44 +6,53 @@ import { requestUpdate } from "./sticky-pending.js";
 const X_REACTIONS = ["x"];
 const EXPIRY_TIME = 10 * 24 * 60 * 60 * 1000;
 
+let running = false;
+
 // Walks the tracker, prunes resolved/expired entries, then asks the sticky
 // to refresh if anything changed.
 async function checkPendingThreads() {
-  const now = Date.now();
-  let changed = false;
+  if (running) return;
+  running = true;
 
-  const openCases = await getOpenCases();
+  try {
+    const now = Date.now();
+    let changed = false;
 
-  for (const caseData of openCases) {
-    const primaryThread = caseData.threads.find((t) => t.isPrimary) ?? caseData.threads[0];
-    if (!primaryThread) continue;
+    const openCases = await getOpenCases();
 
-    const expired = now - caseData.createdAt > EXPIRY_TIME;
+    for (const caseData of openCases) {
+      const primaryThread = caseData.threads.find((t) => t.isPrimary) ?? caseData.threads[0];
+      if (!primaryThread) continue;
 
-    let reactions = [];
-    try {
-      const resp = await botClient.conversations.replies({
-        channel: primaryThread.channel,
-        ts: primaryThread.threadTs,
-        limit: 1,
-        inclusive: true,
-      });
-      reactions = resp.messages?.[0]?.reactions?.map((r) => r.name) ?? [];
-    } catch {
-      if (!expired) continue;
+      const expired = now - caseData.createdAt > EXPIRY_TIME;
+
+      let reactions = [];
+      try {
+        const resp = await botClient.conversations.replies({
+          channel: primaryThread.channel,
+          ts: primaryThread.threadTs,
+          limit: 1,
+          inclusive: true,
+        });
+        reactions = resp.messages?.[0]?.reactions?.map((r) => r.name) ?? [];
+      } catch {
+        if (!expired) continue;
+      }
+
+      const hasTick = reactions.some(isTickReaction);
+      const hasX = X_REACTIONS.some((r) => reactions.includes(r));
+
+      if (hasTick || hasX || expired) {
+        const kind = hasTick ? "resolved" : hasX ? "canceled" : "expired";
+        await resolveCase(caseData.caseNumber, null, kind);
+        changed = true;
+      }
     }
 
-    const hasTick = reactions.some(isTickReaction);
-    const hasX = X_REACTIONS.some((r) => reactions.includes(r));
-
-    if (hasTick || hasX || expired) {
-      const kind = hasTick ? "resolved" : hasX ? "canceled" : "expired";
-      await resolveCase(caseData.caseNumber, null, kind);
-      changed = true;
-    }
+    if (changed) requestUpdate();
+  } finally {
+    running = false;
   }
-
-  if (changed) requestUpdate();
 }
 
 export default checkPendingThreads;

@@ -169,7 +169,7 @@ if (isDev && process.env.AIRTABLE_WEBHOOK_URL) {
     }
   );
 
-  schedule.scheduleJob("*/30 * * * * *", async () => {
+  schedule.scheduleJob("*/5 * * * *", async () => {
     await checkPendingThreads();
   });
 
