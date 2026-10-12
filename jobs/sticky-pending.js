@@ -1,4 +1,4 @@
-import { FIREHOUSE_CHANNEL } from "../lib/config.js";
+import { STICKY_CHANNEL } from "../lib/config.js";
 import { getOpenCases } from "../lib/case-tracker.js";
 import { botClient } from "../lib/clients.js";
 import { db } from "../lib/db.js";
@@ -156,7 +156,7 @@ async function persistStickyTs(ts) {
 
 async function postSticky() {
   const post = await botClient.chat.postMessage({
-    channel: FIREHOUSE_CHANNEL,
+    channel: STICKY_CHANNEL,
     text: "Unresolved cases",
     blocks: cachedBlocks,
     unfurl_links: false,
@@ -164,7 +164,7 @@ async function postSticky() {
   });
   await Promise.all([
     botClient.pins
-      .add({ channel: FIREHOUSE_CHANNEL, timestamp: post.ts })
+      .add({ channel: STICKY_CHANNEL, timestamp: post.ts })
       .catch((e) => console.error("Could not pin sticky:", e.message)),
     persistStickyTs(post.ts),
   ]);
@@ -181,7 +181,7 @@ async function doReposition() {
   const oldTs = stickyTs;
   await Promise.all([
     oldTs
-      ? botClient.chat.delete({ channel: FIREHOUSE_CHANNEL, ts: oldTs }).catch(() => {})
+      ? botClient.chat.delete({ channel: STICKY_CHANNEL, ts: oldTs }).catch(() => {})
       : Promise.resolve(),
     postSticky(),
   ]);
@@ -205,7 +205,7 @@ async function doUpdate() {
 
   await botClient.chat
     .update({
-      channel: FIREHOUSE_CHANNEL,
+      channel: STICKY_CHANNEL,
       ts: stickyTs,
       text: "Unresolved cases",
       blocks: cachedBlocks,
@@ -268,7 +268,7 @@ export function requestUpdate() {
 
 export function register(app) {
   app.event("message", async ({ event }) => {
-    if (event.channel !== FIREHOUSE_CHANNEL) return;
+    if (event.channel !== STICKY_CHANNEL) return;
     if (event.subtype && event.subtype !== "bot_message" && event.subtype !== "thread_broadcast")
       return;
     if (event.thread_ts && event.thread_ts !== event.ts && event.subtype !== "thread_broadcast")
