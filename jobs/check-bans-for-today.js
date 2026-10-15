@@ -32,10 +32,14 @@ async function checkBansForToday() {
       }
     );
     const channelBanChannel = record.fields.channel_ban_channel;
+    const resolution = String(record.fields["How Was This Resolved"] || "").toLowerCase();
+    const isMinimumTermBan = resolution.includes("indef ban");
 
     const text = channelBanChannel
       ? `<@${userId}> channel ban in ${formatChannelMention(channelBanChannel)} ends today, react ✅ if unbanned :)`
-      : `<@${userId}>'s ban/shush ends today (${banEndDate}), react ✅ if unbanned :)`;
+      : isMinimumTermBan
+        ? `<@${userId}>'s minimum ban term ends today (${banEndDate}); they are eligible for appeal/review, react ✅ once reviewed :)`
+        : `<@${userId}>'s ban/shush ends today (${banEndDate}), react ✅ if unbanned :)`;
 
     await botClient.chat
       .postMessage({
